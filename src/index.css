@@ -1,0 +1,25 @@
+:root {
+  color-scheme: dark;
+  --bg: #05080d;
+  --panel-bg: #0d141d;
+  --panel-border: #1c2b3a;
+  --text: #e8f1f8;
+  --text-dim: #8fa5b8;
+  --accent-user: #3fff9e;
+  --accent-selection: #5fd0ff;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: radial-gradient(ellipse at top, #0b1620 0%, #05080d 60%);
+  color: var(--text);
+}
