@@ -8,11 +8,19 @@
   margin: 0 auto;
 }
 
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: clamp(1.6rem, 3vw, 2.2rem);
   letter-spacing: 0.02em;
-  background: linear-gradient(90deg, #5fd0ff, #3fff9e);
+  background: linear-gradient(90deg, var(--accent-selection), var(--accent-user));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -21,6 +29,30 @@
 .app-header p {
   margin: 0.25rem 0 0;
   color: var(--text-dim);
+}
+
+.theme-toggle {
+  display: inline-flex;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 0.2rem;
+  background: var(--panel-bg-alt);
+  flex-shrink: 0;
+}
+
+.theme-toggle button {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  padding: 0.35rem 0.75rem;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.theme-toggle button.active {
+  background: var(--panel-hover);
+  color: var(--text);
 }
 
 .app-main {
@@ -123,7 +155,7 @@
 .clock-card-note {
   margin-top: 0.4rem;
   font-size: 0.75rem;
-  color: #f4c150;
+  color: var(--accent-warn);
 }
 
 .city-search {
@@ -135,7 +167,7 @@
   padding: 0.55rem 0.8rem;
   border-radius: 10px;
   border: 1px solid var(--panel-border);
-  background: #0a1119;
+  background: var(--panel-bg-alt);
   color: var(--text);
   font-size: 0.9rem;
 }
@@ -147,7 +179,7 @@
   position: absolute;
   z-index: 10;
   width: 100%;
-  background: #0a1119;
+  background: var(--panel-bg-alt);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   max-height: 220px;
@@ -167,7 +199,7 @@
 }
 
 .city-search-results button:hover {
-  background: #142230;
+  background: var(--panel-hover);
 }
 
 .sources-panel {
@@ -189,7 +221,7 @@
 }
 
 .resync-btn {
-  background: #142230;
+  background: var(--panel-hover);
   border: 1px solid var(--panel-border);
   color: var(--text);
   padding: 0.35rem 0.8rem;
@@ -208,7 +240,7 @@
 }
 
 .sources-synced-at {
-  color: #5a7284;
+  color: var(--text-faint);
 }
 
 .sources-list {
@@ -221,7 +253,7 @@
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   padding: 0.5rem 0.7rem;
-  background: #0a1119;
+  background: var(--panel-bg-alt);
 }
 
 .source-item summary {
@@ -256,7 +288,7 @@
 }
 
 .source-metrics.error {
-  color: #ff8080;
+  color: var(--accent-error);
 }
 
 .source-detail {
@@ -281,7 +313,7 @@
 .source-raw pre {
   white-space: pre-wrap;
   word-break: break-word;
-  background: #05080d;
+  background: var(--code-bg);
   border-radius: 8px;
   padding: 0.5rem;
   margin: 0.25rem 0 0;
@@ -291,19 +323,19 @@
 }
 
 .source-error {
-  color: #ff8080;
+  color: var(--accent-error);
 }
 
 .sources-footnote {
   margin-top: 0.8rem;
   font-size: 0.72rem;
-  color: #5a7284;
+  color: var(--text-faint);
   line-height: 1.4;
 }
 
 .app-footer {
   text-align: center;
   font-size: 0.75rem;
-  color: #4c6274;
+  color: var(--text-faint);
   padding-top: 0.5rem;
 }
