@@ -8,7 +8,8 @@ interface TimeSourcesPanelProps {
 }
 
 function statusDot(status: TimeSourceResult['status']) {
-  const color = status === 'ok' ? '#3fff9e' : status === 'error' ? '#ff5f5f' : '#f4c150'
+  const color =
+    status === 'ok' ? 'var(--accent-user)' : status === 'error' ? 'var(--accent-error-dot)' : 'var(--accent-warn)'
   return <span className="status-dot" style={{ background: color }} />
 }
 

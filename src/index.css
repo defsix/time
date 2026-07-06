@@ -1,13 +1,42 @@
 :root {
-  color-scheme: dark;
-  --bg: #05080d;
+  color-scheme: light dark;
+
+  /* dark theme (default) */
+  --bg-grad-top: #0b1620;
+  --bg-grad-bottom: #05080d;
   --panel-bg: #0d141d;
+  --panel-bg-alt: #0a1119;
+  --panel-hover: #142230;
   --panel-border: #1c2b3a;
+  --code-bg: #05080d;
   --text: #e8f1f8;
   --text-dim: #8fa5b8;
+  --text-faint: #5a7284;
   --accent-user: #3fff9e;
   --accent-selection: #5fd0ff;
+  --accent-warn: #f4c150;
+  --accent-error: #ff8080;
+  --accent-error-dot: #ff5f5f;
+
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+:root[data-theme='light'] {
+  --bg-grad-top: #ffffff;
+  --bg-grad-bottom: #e3ebf2;
+  --panel-bg: #ffffff;
+  --panel-bg-alt: #f3f6fa;
+  --panel-hover: #e7eef5;
+  --panel-border: #d7e0e8;
+  --code-bg: #eef2f6;
+  --text: #14202b;
+  --text-dim: #51677a;
+  --text-faint: #74889a;
+  --accent-user: #0f9d63;
+  --accent-selection: #0284c7;
+  --accent-warn: #a3690a;
+  --accent-error: #c23a4f;
+  --accent-error-dot: #e5484d;
 }
 
 * {
@@ -20,6 +49,7 @@ html, body, #root {
 }
 
 body {
-  background: radial-gradient(ellipse at top, #0b1620 0%, #05080d 60%);
+  background: radial-gradient(ellipse at top, var(--bg-grad-top) 0%, var(--bg-grad-bottom) 60%);
   color: var(--text);
+  transition: background 0.2s ease, color 0.2s ease;
 }

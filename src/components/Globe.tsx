@@ -3,18 +3,56 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CITIES, type City } from '../lib/cities'
 import { latLonToVector3, vector3ToLatLon } from '../lib/geo'
+import { buildCountryBorderGeometry } from '../lib/countryBorders'
 
 const RADIUS = 2
+
+export type GlobeTheme = 'light' | 'dark'
 
 interface GlobeProps {
   onSelectCity: (city: City) => void
   onSelectPoint: (lat: number, lon: number) => void
   selectedCityName: string | null
   userLocation: { lat: number; lon: number } | null
+  theme: GlobeTheme
+}
+
+const PALETTES: Record<GlobeTheme, {
+  graticule: number
+  graticuleOpacity: number
+  meridian: number
+  meridianOpacity: number
+  countryBorder: number
+  countryBorderOpacity: number
+  shell: number
+  shellOpacity: number
+}> = {
+  dark: {
+    graticule: 0x2f6f8f,
+    graticuleOpacity: 0.35,
+    meridian: 0x5fd0ff,
+    meridianOpacity: 0.55,
+    countryBorder: 0x9fe6ff,
+    countryBorderOpacity: 0.65,
+    shell: 0x2f6f8f,
+    shellOpacity: 0.08,
+  },
+  light: {
+    graticule: 0x4a6a85,
+    graticuleOpacity: 0.3,
+    meridian: 0x0284c7,
+    meridianOpacity: 0.55,
+    countryBorder: 0x0f3a52,
+    countryBorderOpacity: 0.55,
+    shell: 0x4a6a85,
+    shellOpacity: 0.1,
+  },
 }
 
 // Approximate subsolar point (where the sun is directly overhead right now),
-// used purely to shade a day/night terminator on the globe for visual context.
+// used to shade a physically-motivated day/night terminator on the globe.
+// This is independent of the light/dark UI theme — it always reflects the
+// real sun regardless of which color scheme the page is in.
 function subsolarPoint(date: Date): { lat: number; lon: number } {
   const start = Date.UTC(date.getUTCFullYear(), 0, 0)
   const dayOfYear = Math.floor((date.getTime() - start) / 86400000)
@@ -24,7 +62,7 @@ function subsolarPoint(date: Date): { lat: number; lon: number } {
   return { lat: declination, lon }
 }
 
-export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, userLocation }: GlobeProps) {
+export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, userLocation, theme }: GlobeProps) {
   const mountRef = useRef<HTMLDivElement>(null)
   const selectedCityNameRef = useRef<string | null>(null)
   useEffect(() => {
@@ -34,6 +72,7 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
   useEffect(() => {
     const mount = mountRef.current
     if (!mount) return
+    const palette = PALETTES[theme]
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(45, mount.clientWidth / mount.clientHeight, 0.1, 1000)
@@ -52,13 +91,14 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
     controls.autoRotate = true
     controls.autoRotateSpeed = 0.4
 
-    // Day/night shaded core sphere
+    // Day/night shaded core sphere, with a warm terminator glow at the day/night line
     const sunDirUniform = { value: new THREE.Vector3(1, 0, 0) }
     const coreMaterial = new THREE.ShaderMaterial({
       uniforms: {
         sunDirection: sunDirUniform,
-        dayColor: { value: new THREE.Color(0x0d3b52) },
-        nightColor: { value: new THREE.Color(0x030910) },
+        dayColor: { value: new THREE.Color(0x1c6f9c) },
+        nightColor: { value: new THREE.Color(0x020610) },
+        duskColor: { value: new THREE.Color(0xff9d5c) },
       },
       vertexShader: `
         varying vec3 vNormal;
@@ -71,11 +111,15 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
         uniform vec3 sunDirection;
         uniform vec3 dayColor;
         uniform vec3 nightColor;
+        uniform vec3 duskColor;
         varying vec3 vNormal;
         void main() {
           float intensity = dot(normalize(vNormal), normalize(sunDirection));
-          float t = smoothstep(-0.15, 0.15, intensity);
-          gl_FragColor = vec4(mix(nightColor, dayColor, t), 1.0);
+          float dayMix = smoothstep(-0.08, 0.35, intensity);
+          vec3 base = mix(nightColor, dayColor, dayMix);
+          float terminator = 1.0 - smoothstep(0.0, 0.2, abs(intensity));
+          base = mix(base, duskColor, terminator * 0.55);
+          gl_FragColor = vec4(base, 1.0);
         }
       `,
     })
@@ -84,8 +128,16 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
 
     // Graticule (lat/lon grid lines)
     const graticuleGroup = new THREE.Group()
-    const graticuleMat = new THREE.LineBasicMaterial({ color: 0x2f6f8f, transparent: true, opacity: 0.35 })
-    const tzMat = new THREE.LineBasicMaterial({ color: 0x5fd0ff, transparent: true, opacity: 0.55 })
+    const graticuleMat = new THREE.LineBasicMaterial({
+      color: palette.graticule,
+      transparent: true,
+      opacity: palette.graticuleOpacity,
+    })
+    const tzMat = new THREE.LineBasicMaterial({
+      color: palette.meridian,
+      transparent: true,
+      opacity: palette.meridianOpacity,
+    })
 
     for (let lat = -75; lat <= 75; lat += 15) {
       const points: THREE.Vector3[] = []
@@ -108,9 +160,23 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
     }
     scene.add(graticuleGroup)
 
+    // Country border outlines (Natural Earth 110m, bundled at build time)
+    const countryGeo = buildCountryBorderGeometry(RADIUS * 1.004)
+    const countryMat = new THREE.LineBasicMaterial({
+      color: palette.countryBorder,
+      transparent: true,
+      opacity: palette.countryBorderOpacity,
+    })
+    scene.add(new THREE.LineSegments(countryGeo, countryMat))
+
     // Outer faint wireframe shell for a "globe of wire" silhouette
     const shellGeo = new THREE.SphereGeometry(RADIUS * 1.002, 24, 16)
-    const shellMat = new THREE.MeshBasicMaterial({ color: 0x2f6f8f, wireframe: true, transparent: true, opacity: 0.08 })
+    const shellMat = new THREE.MeshBasicMaterial({
+      color: palette.shell,
+      wireframe: true,
+      transparent: true,
+      opacity: palette.shellOpacity,
+    })
     scene.add(new THREE.Mesh(shellGeo, shellMat))
 
     // Invisible hit-sphere for raycasting arbitrary click points
@@ -235,7 +301,7 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
       mount.removeChild(renderer.domElement)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocation])
+  }, [userLocation, theme])
 
   return <div ref={mountRef} className="globe-mount" />
 }

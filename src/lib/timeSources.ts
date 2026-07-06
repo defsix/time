@@ -77,31 +77,17 @@ export const TIME_SOURCE_DEFS: TimeSourceDef[] = [
     },
   },
   {
-    id: 'cloudflare',
-    name: 'Cloudflare Edge (cdn-cgi/trace)',
-    url: 'https://cloudflare.com/cdn-cgi/trace',
-    method: 'GET (text)',
-    protocol: 'HTTPS, answered by nearest Cloudflare anycast edge node',
-    description:
-      'Cloudflare’s edge diagnostic endpoint echoes back the request timestamp (“ts”) from whichever edge datacenter is nearest to you via anycast routing — a fast, high-availability, NTP-synced reference clock.',
-    parse: (body) => {
-      const match = body.match(/ts=([0-9.]+)/)
-      if (!match) throw new Error('no ts field')
-      return parseFloat(match[1]) * 1000
-    },
-  },
-  {
-    id: 'jsontest',
-    name: 'JSONTest date service',
-    url: 'https://date.jsontest.com',
+    id: 'iss-now',
+    name: 'Where The ISS At (satellite tracker)',
+    url: 'https://api.wheretheiss.at/v1/satellites/25544',
     method: 'GET (JSON)',
-    protocol: 'HTTPS REST, independent backend/host from the sources above',
+    protocol: 'HTTPS REST, unrelated third-party service',
     description:
-      'A lightweight independent JSON time endpoint on its own infrastructure — a fourth, unrelated data point so the consensus clock isn’t relying on providers that might share upstream infra.',
+      'Not a time API at all — a public satellite-tracking service that stamps every response with the current Unix time it used to compute the ISS’s position. Used here purely as an independent server clock with no shared infrastructure with the time-specific APIs above (only second-level precision, so expect a larger offset spread than the others).',
     parse: (body) => {
-      const data = JSON.parse(body) as { milliseconds_since_epoch?: number }
-      if (typeof data.milliseconds_since_epoch !== 'number') throw new Error('unexpected payload')
-      return data.milliseconds_since_epoch
+      const data = JSON.parse(body) as { timestamp?: number }
+      if (typeof data.timestamp !== 'number') throw new Error('unexpected payload')
+      return data.timestamp * 1000
     },
   },
 ]
