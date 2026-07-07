@@ -7,6 +7,9 @@ import { buildCountryBorderGeometry } from '../lib/countryBorders'
 
 const RADIUS = 2
 const FLY_DURATION_MS = 1200
+const IDLE_RETURN_HOME_MS = 10_000 // no touch for this long -> fly back to the user's own location
+const IDLE_START_ROTATE_MS = 5_000 // then this much longer with still no touch -> start the slow auto-spin
+const AUTO_ROTATE_SPEED = 1.0 // OrbitControls unit: 60 / speed seconds per revolution at 60fps -> 1 rev/min
 
 export interface FlyToRequest {
   city: City
@@ -92,8 +95,8 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
     controls.dampingFactor = 0.08
     controls.minDistance = 3
     controls.maxDistance = 10
-    controls.autoRotate = true
-    controls.autoRotateSpeed = 0.4
+    controls.autoRotate = false
+    controls.autoRotateSpeed = AUTO_ROTATE_SPEED
     controls.rotateSpeed = 0.35
     controls.zoomSpeed = 0.6
 
@@ -113,11 +116,42 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
       labelVisible = true
     }
 
+    // Idle behavior: 10s with no touch -> fly back to the user's own location;
+    // a further 5s with still no touch -> start a slow 1-revolution-per-minute
+    // auto-spin. Any touch (drag, zoom, or tap) cancels and restarts this from
+    // scratch.
+    let returnHomeTimer: ReturnType<typeof setTimeout> | null = null
+    let startRotateTimer: ReturnType<typeof setTimeout> | null = null
+
+    function clearIdleTimers() {
+      if (returnHomeTimer !== null) {
+        clearTimeout(returnHomeTimer)
+        returnHomeTimer = null
+      }
+      if (startRotateTimer !== null) {
+        clearTimeout(startRotateTimer)
+        startRotateTimer = null
+      }
+    }
+
+    function resetIdleTimers() {
+      clearIdleTimers()
+      controls.autoRotate = false
+      returnHomeTimer = setTimeout(() => {
+        returnHomeTimer = null
+        if (userLocation) flyToTarget(userLocation.lat, userLocation.lon, 'Your Location')
+        startRotateTimer = setTimeout(() => {
+          startRotateTimer = null
+          controls.autoRotate = true
+        }, IDLE_START_ROTATE_MS)
+      }, IDLE_RETURN_HOME_MS)
+    }
+
     // Manual dragging (but not the idle autoRotate, which never fires this
-    // event) should hide the on-globe name label and stop the idle spin.
+    // event) should hide the on-globe name label and restart the idle countdown.
     controls.addEventListener('start', () => {
       hideLabel()
-      controls.autoRotate = false
+      resetIdleTimers()
     })
 
     // Day/night shaded core sphere, with a warm terminator glow at the day/night line.
@@ -264,10 +298,11 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
     scene.add(new THREE.AmbientLight(0xffffff, 0.6))
 
     // Camera fly-to: animate along the great-circle arc (not a straight lerp,
-    // which would cut through the globe) so the target city ends up facing
-    // the camera, then show its name label.
+    // which would cut through the globe) so the target ends up facing the
+    // camera, then show a name label (used for both search-selected cities
+    // and the idle "return to your location" behavior below).
     let flightFrameId: number | null = null
-    function flyTo(request: FlyToRequest) {
+    function flyToTarget(lat: number, lon: number, label: string) {
       if (flightFrameId !== null) cancelAnimationFrame(flightFrameId)
       hideLabel()
       controls.autoRotate = false
@@ -275,10 +310,10 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
 
       const distance = camera.position.length()
       const startDir = camera.position.clone().normalize()
-      const endDir = latLonToVector3(request.city.lat, request.city.lon, 1).normalize()
+      const endDir = latLonToVector3(lat, lon, 1).normalize()
       const startTime = performance.now()
 
-      const targetPos = latLonToVector3(request.city.lat, request.city.lon, RADIUS * 1.01)
+      const targetPos = latLonToVector3(lat, lon, RADIUS * 1.01)
 
       function step() {
         const t = Math.min((performance.now() - startTime) / FLY_DURATION_MS, 1)
@@ -294,10 +329,13 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
           controls.enabled = true
           highlightMarker.position.copy(targetPos)
           highlightMarker.visible = true
-          showLabelAt(targetPos, `${request.city.name}, ${request.city.country}`)
+          showLabelAt(targetPos, label)
         }
       }
       step()
+    }
+    function flyTo(request: FlyToRequest) {
+      flyToTarget(request.city.lat, request.city.lon, `${request.city.name}, ${request.city.country}`)
     }
     flyToHandlerRef.current = flyTo
     // If a fly-to request already arrived in the same commit that recreated this
@@ -324,6 +362,7 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
 
     function handlePointerDown(ev: PointerEvent) {
       downPos = { x: ev.clientX, y: ev.clientY }
+      resetIdleTimers()
     }
 
     function handlePointerUp(ev: PointerEvent) {
@@ -361,9 +400,14 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
       renderer.domElement.style.cursor = hits.length > 0 ? 'pointer' : 'grab'
     }
 
+    function handleWheel() {
+      resetIdleTimers()
+    }
+
     renderer.domElement.addEventListener('pointerdown', handlePointerDown)
     renderer.domElement.addEventListener('pointerup', handlePointerUp)
     renderer.domElement.addEventListener('pointermove', handlePointerMove)
+    renderer.domElement.addEventListener('wheel', handleWheel, { passive: true })
 
     function handleResize() {
       if (!mount) return
@@ -413,15 +457,18 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
       renderer.render(scene, camera)
     }
     animate()
+    resetIdleTimers()
 
     return () => {
       cancelAnimationFrame(frameId)
       if (flightFrameId !== null) cancelAnimationFrame(flightFrameId)
+      clearIdleTimers()
       flyToHandlerRef.current = null
       window.removeEventListener('resize', handleResize)
       renderer.domElement.removeEventListener('pointerdown', handlePointerDown)
       renderer.domElement.removeEventListener('pointerup', handlePointerUp)
       renderer.domElement.removeEventListener('pointermove', handlePointerMove)
+      renderer.domElement.removeEventListener('wheel', handleWheel)
       controls.dispose()
       renderer.dispose()
       mount.removeChild(renderer.domElement)
