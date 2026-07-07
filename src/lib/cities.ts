@@ -1,3 +1,5 @@
+import { cityMapping } from 'city-timezones'
+
 export interface City {
   name: string
   country: string
@@ -6,9 +8,10 @@ export interface City {
   tz: string
 }
 
-// A representative spread of cities across every UTC offset band and continent,
-// used as clickable markers on the globe and for the search/quick-pick list.
-export const CITIES: City[] = [
+// Hand-picked cities guaranteeing at least one marker in every UTC offset
+// band and continent, even in places too sparsely populated to make a
+// population-ranked cut on their own.
+const CURATED: City[] = [
   { name: 'London', country: 'UK', lat: 51.5074, lon: -0.1278, tz: 'Europe/London' },
   { name: 'Paris', country: 'France', lat: 48.8566, lon: 2.3522, tz: 'Europe/Paris' },
   { name: 'Berlin', country: 'Germany', lat: 52.52, lon: 13.405, tz: 'Europe/Berlin' },
@@ -46,3 +49,38 @@ export const CITIES: City[] = [
   { name: 'Johannesburg', country: 'South Africa', lat: -26.2041, lon: 28.0473, tz: 'Africa/Johannesburg' },
   { name: 'Nairobi', country: 'Kenya', lat: -1.2921, lon: 36.8219, tz: 'Africa/Nairobi' },
 ]
+
+// Top cities worldwide by population, layered on top of the curated list
+// above to give the globe a much denser, more useful set of clickable
+// markers without hand-writing hundreds of entries.
+const MARKER_TARGET_COUNT = 250
+
+function keyFor(name: string, country: string): string {
+  return `${name.toLowerCase()}|${country.toLowerCase()}`
+}
+
+const curatedKeys = new Set(CURATED.map((c) => keyFor(c.name, c.country)))
+
+const byPopulation = cityMapping
+  .filter((c) => c.timezone)
+  .sort((a, b) => (b.pop || 0) - (a.pop || 0))
+  .map((c) => ({
+    name: c.province && c.province !== c.city ? `${c.city}, ${c.province}` : c.city,
+    country: c.country,
+    lat: c.lat,
+    lon: c.lng,
+    tz: c.timezone,
+  }))
+  .filter((c) => !curatedKeys.has(keyFor(c.name, c.country)))
+
+const seen = new Set<string>()
+const topByPopulation: City[] = []
+for (const city of byPopulation) {
+  const key = keyFor(city.name, city.country)
+  if (seen.has(key)) continue
+  seen.add(key)
+  topByPopulation.push(city)
+  if (topByPopulation.length >= MARKER_TARGET_COUNT - CURATED.length) break
+}
+
+export const CITIES: City[] = [...CURATED, ...topByPopulation]
