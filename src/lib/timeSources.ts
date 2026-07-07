@@ -9,6 +9,13 @@
 
 export type SourceStatus = 'pending' | 'ok' | 'error'
 
+export interface TimingBreakdown {
+  dnsMs: number
+  connectMs: number
+  ttfbMs: number
+  downloadMs: number
+}
+
 export interface TimeSourceDef {
   id: string
   name: string
@@ -32,6 +39,10 @@ export interface TimeSourceResult {
   raw: string | null
   error: string | null
   measuredAt: number | null // performance.now() timestamp of measurement
+  httpStatus: number | null
+  contentType: string | null
+  sizeBytes: number | null
+  timing: TimingBreakdown | null // best-effort; browsers redact this for most cross-origin responses
 }
 
 export const TIME_SOURCE_DEFS: TimeSourceDef[] = [
@@ -90,7 +101,38 @@ export const TIME_SOURCE_DEFS: TimeSourceDef[] = [
       return data.timestamp * 1000
     },
   },
+  {
+    id: 'open-notify',
+    name: 'Open Notify (ISS tracker)',
+    url: 'https://api.open-notify.org/iss-now.json',
+    method: 'GET (JSON)',
+    protocol: 'HTTPS REST, unrelated third-party service on separate infrastructure from the ISS source above',
+    description:
+      'The same borrowed-timestamp trick as Where The ISS At, but a completely separate hobby-run service (open-notify.org) tracking the same satellite independently — different maintainer, different servers, different codebase. A sixth data point that shares nothing with any other source here except the fact that both happen to track the ISS (second-level precision).',
+    parse: (body) => {
+      const data = JSON.parse(body) as { timestamp?: number }
+      if (typeof data.timestamp !== 'number') throw new Error('unexpected payload')
+      return data.timestamp * 1000
+    },
+  },
 ]
+
+function extractTimingBreakdown(url: string, sinceTime: number): TimingBreakdown | null {
+  const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
+  const candidates = entries.filter((e) => e.name === url && e.startTime >= sinceTime - 50)
+  const entry = candidates[candidates.length - 1]
+  if (!entry) return null
+  // Cross-origin responses without a Timing-Allow-Origin header have most phase
+  // timings zeroed out by the browser for privacy — only surface this when the
+  // server actually opted in and gave us something real to show.
+  if (entry.connectEnd === 0 && entry.domainLookupEnd === 0 && entry.responseStart === 0) return null
+  return {
+    dnsMs: Math.max(0, entry.domainLookupEnd - entry.domainLookupStart),
+    connectMs: Math.max(0, entry.connectEnd - entry.connectStart),
+    ttfbMs: Math.max(0, entry.responseStart - entry.requestStart),
+    downloadMs: Math.max(0, entry.responseEnd - entry.responseStart),
+  }
+}
 
 async function measureSource(def: TimeSourceDef): Promise<TimeSourceResult> {
   const base: TimeSourceResult = {
@@ -106,6 +148,10 @@ async function measureSource(def: TimeSourceDef): Promise<TimeSourceResult> {
     raw: null,
     error: null,
     measuredAt: null,
+    httpStatus: null,
+    contentType: null,
+    sizeBytes: null,
+    timing: null,
   }
 
   if (def.id === 'device') {
@@ -138,6 +184,10 @@ async function measureSource(def: TimeSourceDef): Promise<TimeSourceResult> {
         offsetMs: Math.round(offsetMs),
         raw: body.slice(0, 400),
         measuredAt: t1,
+        httpStatus: res.status,
+        contentType: res.headers.get('content-type'),
+        sizeBytes: new Blob([body]).size,
+        timing: extractTimingBreakdown(def.url, t0),
       }
     } catch (err) {
       lastError = err

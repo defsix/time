@@ -249,6 +249,82 @@
   border-color: var(--accent-error);
 }
 
+.solar-lunar-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 1.1rem 1.3rem;
+}
+
+.solar-lunar-grid {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.solar-block {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.sun-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.sun-row strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.sun-note {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.moon-block {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-shrink: 0;
+}
+
+.moon-icon-dark {
+  fill: #0c1220;
+}
+
+.moon-icon-light {
+  fill: #f4f0e0;
+}
+
+.moon-icon-outline {
+  stroke: var(--panel-border);
+  stroke-width: 1;
+}
+
+.moon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+
+.moon-info strong {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.moon-info span {
+  color: var(--text-dim);
+}
+
 .clock-card-time {
   font-variant-numeric: tabular-nums;
   font-size: clamp(2rem, 4vw, 2.6rem);
@@ -431,6 +507,13 @@
 
 .source-desc {
   font-style: italic;
+}
+
+.source-http-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  font-size: 0.75rem;
 }
 
 .source-raw pre {

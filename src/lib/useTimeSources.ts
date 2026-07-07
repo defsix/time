@@ -17,6 +17,10 @@ function initialResults(): TimeSourceResult[] {
     raw: null,
     error: null,
     measuredAt: null,
+    httpStatus: null,
+    contentType: null,
+    sizeBytes: null,
+    timing: null,
   }))
 }
 
