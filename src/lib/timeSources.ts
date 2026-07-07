@@ -86,21 +86,14 @@ export const TIME_SOURCE_DEFS: TimeSourceDef[] = [
       return data.serverTime
     },
   },
-  {
-    id: 'kucoin-time',
-    name: 'KuCoin server time',
-    url: 'https://api.kucoin.com/api/v1/timestamp',
-    method: 'GET (JSON)',
-    protocol: 'HTTPS REST, financial exchange infrastructure, unrelated to the source above',
-    description:
-      'The same idea as the Binance source — a major exchange’s dedicated clock-sync endpoint — but a completely separate company and infrastructure, used here as an independent, high-uptime reference clock (millisecond precision).',
-    parse: (body) => {
-      const data = JSON.parse(body) as { data?: number }
-      if (typeof data.data !== 'number') throw new Error('unexpected payload')
-      return data.data
-    },
-  },
 ]
+
+// Real NTP servers (pool.ntp.org, time.windows.com, time.google.com, etc.)
+// deliberately aren't in this list: NTP runs over raw UDP on port 123, and
+// browsers have no API for raw UDP sockets — fetch()/XHR only speak HTTP(S).
+// There's no client-side workaround; getting genuine NTP data into a browser
+// requires a server-side proxy that speaks NTP and re-exposes it over HTTPS,
+// which is out of scope for this static site.
 
 function extractTimingBreakdown(url: string, sinceTime: number): TimingBreakdown | null {
   const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
