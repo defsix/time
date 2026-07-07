@@ -1,0 +1,5 @@
+This directory is intentionally tracked (empty) so `xcodegen generate`
+finds a source directory to validate against on a fresh checkout, before
+Scripts/sync-web-assets.sh has had a chance to populate it with a real
+web app build. Its actual contents are gitignored and rebuilt on every
+Xcode build.
