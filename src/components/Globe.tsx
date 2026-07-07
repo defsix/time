@@ -128,7 +128,7 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
         sunDirection: sunDirUniform,
         dayColor: { value: new THREE.Color(0x1c6f9c) },
         nightColor: { value: new THREE.Color(0x020610) },
-        duskColor: { value: new THREE.Color(0xff9d5c) },
+        lineColor: { value: new THREE.Color(0xfff2df) },
       },
       vertexShader: `
         varying vec3 vWorldNormal;
@@ -141,14 +141,14 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
         uniform vec3 sunDirection;
         uniform vec3 dayColor;
         uniform vec3 nightColor;
-        uniform vec3 duskColor;
+        uniform vec3 lineColor;
         varying vec3 vWorldNormal;
         void main() {
           float intensity = dot(normalize(vWorldNormal), normalize(sunDirection));
-          float dayMix = smoothstep(-0.08, 0.35, intensity);
+          float dayMix = smoothstep(-0.015, 0.015, intensity);
           vec3 base = mix(nightColor, dayColor, dayMix);
-          float terminator = 1.0 - smoothstep(0.0, 0.2, abs(intensity));
-          base = mix(base, duskColor, terminator * 0.55);
+          float line = 1.0 - smoothstep(0.0, 0.006, abs(intensity));
+          base = mix(base, lineColor, line);
           gl_FragColor = vec4(base, 1.0);
         }
       `,
