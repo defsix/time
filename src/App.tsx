@@ -7,6 +7,7 @@ import ThemeToggle from './components/ThemeToggle'
 import HourFormatToggle from './components/HourFormatToggle'
 import CopyLinkButton from './components/CopyLinkButton'
 import PinnedCitiesStrip from './components/PinnedCitiesStrip'
+import SolarLunarCard from './components/SolarLunarCard'
 import { useTimeSources } from './lib/useTimeSources'
 import { useTheme } from './lib/useTheme'
 import { useHourFormat } from './lib/useHourFormat'
@@ -101,6 +102,13 @@ export default function App() {
   const selectedSolarOffset =
     selection?.kind === 'point' ? approxSolarOffsetHours(selection.lon) : undefined
 
+  const solarLunarLocation =
+    selection?.kind === 'city'
+      ? { lat: selection.city.lat, lon: selection.city.lon, tz: selection.city.tz, label: `${selection.city.name}, ${selection.city.country}` }
+      : userLocation
+        ? { lat: userLocation.lat, lon: userLocation.lon, tz: userTimeZone, label: 'Your Location' }
+        : null
+
   return (
     <div className="app">
       <header className="app-header">
@@ -179,6 +187,8 @@ export default function App() {
             />
           )}
 
+          <SolarLunarCard now={now} location={solarLunarLocation} hour12={hour12} />
+
           <TimeSourcesPanel
             results={results}
             consensusOffset={consensusOffset}
@@ -189,8 +199,9 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        Built with Three.js. Time cross-checked against WorldTimeAPI, TimeAPI.io, and an unrelated satellite-tracking
-        API's server clock — see the Time Sources panel for live tech details on each.
+        Built with Three.js. Time cross-checked against WorldTimeAPI, TimeAPI.io, and two unrelated
+        satellite-tracking APIs' server clocks — see the Time Sources panel for live tech details on each.
+        Sunrise, sunset, and moon phase are computed locally from standard solar/lunar position formulas.
       </footer>
     </div>
   )

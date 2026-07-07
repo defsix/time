@@ -47,6 +47,27 @@ export default function TimeSourcesPanel({ results, consensusOffset, lastSyncedA
               <div><strong>Method:</strong> {r.method}</div>
               <div><strong>Protocol:</strong> {r.protocol}</div>
               <div className="source-desc">{r.description}</div>
+              {r.status === 'ok' && r.id !== 'device' && (
+                <div className="source-http-meta">
+                  {r.httpStatus !== null && (
+                    <span><strong>HTTP:</strong> {r.httpStatus}</span>
+                  )}
+                  {r.contentType && (
+                    <span><strong>Content-Type:</strong> {r.contentType}</span>
+                  )}
+                  {r.sizeBytes !== null && (
+                    <span><strong>Size:</strong> {r.sizeBytes} B</span>
+                  )}
+                </div>
+              )}
+              {r.status === 'ok' && r.timing && (
+                <div className="source-http-meta">
+                  <span><strong>DNS:</strong> {Math.round(r.timing.dnsMs)}ms</span>
+                  <span><strong>Connect:</strong> {Math.round(r.timing.connectMs)}ms</span>
+                  <span><strong>TTFB:</strong> {Math.round(r.timing.ttfbMs)}ms</span>
+                  <span><strong>Download:</strong> {Math.round(r.timing.downloadMs)}ms</span>
+                </div>
+              )}
               {r.status === 'ok' && r.raw && r.id !== 'device' && (
                 <div className="source-raw">
                   <strong>Raw response:</strong>
