@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { CITIES, type City } from '../lib/cities'
+import { ALL_CITIES } from '../lib/allCities'
+import type { City } from '../lib/cities'
 
 interface CitySearchProps {
   onSelectCity: (city: City) => void
@@ -9,24 +10,31 @@ export default function CitySearch({ onSelectCity }: CitySearchProps) {
   const [query, setQuery] = useState('')
 
   const matches = useMemo(() => {
-    if (!query.trim()) return []
-    const q = query.toLowerCase()
-    return CITIES.filter((c) => c.name.toLowerCase().includes(q) || c.country.toLowerCase().includes(q)).slice(0, 8)
+    const q = query.trim().toLowerCase()
+    if (q.length < 2) return []
+    const found: City[] = []
+    for (const c of ALL_CITIES) {
+      if (c.name.toLowerCase().includes(q) || c.country.toLowerCase().includes(q)) {
+        found.push(c)
+        if (found.length >= 8) break
+      }
+    }
+    return found
   }, [query])
 
   return (
     <div className="city-search">
       <input
         type="text"
-        placeholder="Jump to a city…"
+        placeholder="Search all cities…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         aria-label="Search for a city"
       />
       {matches.length > 0 && (
         <ul className="city-search-results">
-          {matches.map((c) => (
-            <li key={c.name}>
+          {matches.map((c, i) => (
+            <li key={`${c.name}-${c.country}-${i}`}>
               <button
                 onClick={() => {
                   onSelectCity(c)

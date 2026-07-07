@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import Globe from './components/Globe'
+import Globe, { type FlyToRequest } from './components/Globe'
 import ClockCard from './components/ClockCard'
 import TimeSourcesPanel from './components/TimeSourcesPanel'
 import CitySearch from './components/CitySearch'
@@ -7,6 +7,7 @@ import ThemeToggle from './components/ThemeToggle'
 import { useTimeSources } from './lib/useTimeSources'
 import { useTheme } from './lib/useTheme'
 import { approxSolarOffsetHours } from './lib/geo'
+import { findNearestCity } from './lib/allCities'
 import type { City } from './lib/cities'
 import './App.css'
 
@@ -14,13 +15,19 @@ type Selection = { kind: 'city'; city: City } | { kind: 'point'; lat: number; lo
 
 export default function App() {
   const { results, resync, lastSyncedAt, correctedNow, consensusOffset } = useTimeSources()
-  const { choice: themeChoice, effective: effectiveTheme, setChoice: setThemeChoice } = useTheme()
+  const { choice: themeChoice, setChoice: setThemeChoice } = useTheme()
   const [now, setNow] = useState(() => correctedNow())
   const [selection, setSelection] = useState<Selection>(null)
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null)
   const [geoStatus, setGeoStatus] = useState<'idle' | 'granted' | 'denied' | 'unsupported'>('idle')
+  const [flyToRequest, setFlyToRequest] = useState<FlyToRequest | null>(null)
 
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  function selectCity(city: City, fly: boolean) {
+    setSelection({ kind: 'city', city })
+    if (fly) setFlyToRequest({ city, nonce: Date.now() })
+  }
 
   useEffect(() => {
     const interval = setInterval(() => setNow(correctedNow()), 1000)
@@ -34,12 +41,19 @@ export default function App() {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude })
+        const lat = pos.coords.latitude
+        const lon = pos.coords.longitude
+        setUserLocation({ lat, lon })
         setGeoStatus('granted')
+        // Default the second card + globe to the nearest known city so there's
+        // something relevant to look at before the user searches for anything.
+        const nearest = findNearestCity(lat, lon)
+        if (nearest) selectCity(nearest, true)
       },
       () => setGeoStatus('denied'),
       { timeout: 8000 },
     )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const selectedTimeZone = selection?.kind === 'city' ? selection.city.tz : undefined
@@ -59,17 +73,17 @@ export default function App() {
       <main className="app-main">
         <section className="globe-section">
           <Globe
-            onSelectCity={(city) => setSelection({ kind: 'city', city })}
+            onSelectCity={(city) => selectCity(city, false)}
             onSelectPoint={(lat, lon) => setSelection({ kind: 'point', lat, lon })}
             selectedCityName={selection?.kind === 'city' ? selection.city.name : null}
             userLocation={userLocation}
-            theme={effectiveTheme}
+            flyToRequest={flyToRequest}
           />
           <div className="globe-hint">
             Drag to rotate · scroll to zoom · click an amber marker for a city, or click anywhere else on the
             globe for an approximate local time
           </div>
-          <CitySearch onSelectCity={(city) => setSelection({ kind: 'city', city })} />
+          <CitySearch onSelectCity={(city) => selectCity(city, true)} />
         </section>
 
         <section className="panels-section">

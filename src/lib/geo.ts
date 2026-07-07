@@ -35,3 +35,24 @@ export function formatOffset(hours: number): string {
   const m = Math.round((abs - h) * 60)
   return `UTC${sign}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
+
+const EARTH_RADIUS_KM = 6371
+
+export function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// Great-circle interpolation between two unit vectors, used to animate the
+// camera along the sphere's surface (a straight lerp would cut through the globe).
+export function slerpUnitVectors(a: THREE.Vector3, b: THREE.Vector3, t: number): THREE.Vector3 {
+  const dot = THREE.MathUtils.clamp(a.dot(b), -1, 1)
+  const theta = Math.acos(dot) * t
+  if (theta === 0) return a.clone()
+  const relative = b.clone().sub(a.clone().multiplyScalar(dot)).normalize()
+  return a.clone().multiplyScalar(Math.cos(theta)).add(relative.multiplyScalar(Math.sin(theta)))
+}

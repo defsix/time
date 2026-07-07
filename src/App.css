@@ -79,12 +79,29 @@
 }
 
 .globe-mount {
+  position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
   max-height: 65vh;
   border-radius: 12px;
   overflow: hidden;
   cursor: grab;
+}
+
+.globe-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background: rgba(5, 10, 16, 0.82);
+  color: #f3fbff;
+  border: 1px solid rgba(111, 220, 255, 0.6);
+  border-radius: 8px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 5;
 }
 
 .globe-mount canvas {
