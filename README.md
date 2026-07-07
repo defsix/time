@@ -39,6 +39,18 @@ Note: real NTP servers (`pool.ntp.org`, `time.windows.com`, etc.) are deliberate
 - No backend — a static site deployed to [GitHub Pages](https://pages.github.com/) via GitHub Actions
 - `city-timezones` (bundled, code-split) for the ~7,300-city search index
 
+## Mobile apps
+
+Both wrap this web app in a native WebView rather than reimplementing the
+globe/clock/search natively, so they stay in sync with the web app
+automatically:
+
+- [`android/`](android/) — Kotlin, `WebView` + `WebViewAssetLoader`. See
+  [`android/README.md`](android/README.md).
+- [`ios/`](ios/) — Swift/SwiftUI, `WKWebView` + a custom `app://` scheme
+  handler and a CoreLocation-backed geolocation bridge. See
+  [`ios/README.md`](ios/README.md).
+
 ## Getting started
 
 ```bash
@@ -77,6 +89,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-07
 
+- Added Kotlin Android (`WebView` + `WebViewAssetLoader`) and Swift/SwiftUI iOS (`WKWebView` + a custom `app://` scheme handler and CoreLocation geolocation bridge) apps that wrap this web app natively — see [Mobile apps](#mobile-apps)
 - Replaced Coinbase, Kraken, and KuCoin (all failed CORS in real-world testing) with timeapi.world and time.now; documented why real NTP servers can't be queried from a browser at all (UDP-only protocol, no browser socket API)
 - Swapped WorldTimeAPI and two hobby-run ISS-tracker sources for exchange clock-sync endpoints after field reports of consistent failures
 - Added idle behavior: return to your location after 10s idle, then a slow 1-rev/min auto-spin after 15s
