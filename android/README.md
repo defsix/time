@@ -35,6 +35,13 @@ cd android
 
 Or just open the `android/` folder in Android Studio and run it.
 
+### Prebuilt APK via CI
+
+[`.github/workflows/android-build.yml`](../.github/workflows/android-build.yml)
+builds a debug APK on every push/PR that touches the app (and on demand via
+"Run workflow"). Grab it from the workflow run's **Artifacts** section
+(`world-time-debug-apk`) without needing a local Android SDK.
+
 ## Known limitation of this change
 
 This was developed in a sandboxed environment without an Android SDK and
