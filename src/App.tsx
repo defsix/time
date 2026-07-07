@@ -1,26 +1,47 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Globe, { type FlyToRequest } from './components/Globe'
 import ClockCard from './components/ClockCard'
 import TimeSourcesPanel from './components/TimeSourcesPanel'
 import CitySearch from './components/CitySearch'
 import ThemeToggle from './components/ThemeToggle'
+import HourFormatToggle from './components/HourFormatToggle'
+import CopyLinkButton from './components/CopyLinkButton'
+import PinnedCitiesStrip from './components/PinnedCitiesStrip'
 import { useTimeSources } from './lib/useTimeSources'
 import { useTheme } from './lib/useTheme'
+import { useHourFormat } from './lib/useHourFormat'
+import { usePinnedCities } from './lib/usePinnedCities'
 import { approxSolarOffsetHours } from './lib/geo'
 import { findNearestCity } from './lib/allCities'
+import { readShareParamsFromURL, writeShareParamsToURL } from './lib/shareLink'
 import type { City } from './lib/cities'
 import './App.css'
 
 type Selection = { kind: 'city'; city: City } | { kind: 'point'; lat: number; lon: number } | null
 
+function selectionFromShareParams(): Selection {
+  const shared = readShareParamsFromURL()
+  if (!shared) return null
+  if (shared.name && shared.tz) {
+    return { kind: 'city', city: { name: shared.name, country: shared.country ?? '', lat: shared.lat, lon: shared.lon, tz: shared.tz } }
+  }
+  return { kind: 'point', lat: shared.lat, lon: shared.lon }
+}
+
 export default function App() {
   const { results, resync, lastSyncedAt, correctedNow, consensusOffset } = useTimeSources()
   const { choice: themeChoice, setChoice: setThemeChoice } = useTheme()
+  const { choice: hourFormatChoice, hour12, setChoice: setHourFormatChoice } = useHourFormat()
+  const { pinned, isPinned, togglePin, removePin } = usePinnedCities()
   const [now, setNow] = useState(() => correctedNow())
-  const [selection, setSelection] = useState<Selection>(null)
+  const [selection, setSelection] = useState<Selection>(() => selectionFromShareParams())
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null)
   const [geoStatus, setGeoStatus] = useState<'idle' | 'granted' | 'denied' | 'unsupported'>('idle')
-  const [flyToRequest, setFlyToRequest] = useState<FlyToRequest | null>(null)
+  const [flyToRequest, setFlyToRequest] = useState<FlyToRequest | null>(() => {
+    const initial = selectionFromShareParams()
+    return initial?.kind === 'city' ? { city: initial.city, nonce: Date.now() } : null
+  })
+  const hasSharedSelectionRef = useRef(selection !== null)
 
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
@@ -46,15 +67,35 @@ export default function App() {
         setUserLocation({ lat, lon })
         setGeoStatus('granted')
         // Default the second card + globe to the nearest known city so there's
-        // something relevant to look at before the user searches for anything.
-        const nearest = findNearestCity(lat, lon)
-        if (nearest) selectCity(nearest, true)
+        // something relevant to look at before the user searches for anything
+        // — unless a shared link already picked a selection, which wins.
+        if (hasSharedSelectionRef.current) return
+        findNearestCity(lat, lon).then((nearest) => {
+          if (nearest && !hasSharedSelectionRef.current) selectCity(nearest, true)
+        })
       },
       () => setGeoStatus('denied'),
       { timeout: 8000 },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Keep the URL in sync with the current selection so it can be copied/shared.
+  useEffect(() => {
+    if (!selection) {
+      writeShareParamsToURL(null)
+    } else if (selection.kind === 'city') {
+      writeShareParamsToURL({
+        lat: selection.city.lat,
+        lon: selection.city.lon,
+        name: selection.city.name,
+        country: selection.city.country,
+        tz: selection.city.tz,
+      })
+    } else {
+      writeShareParamsToURL({ lat: selection.lat, lon: selection.lon })
+    }
+  }, [selection])
 
   const selectedTimeZone = selection?.kind === 'city' ? selection.city.tz : undefined
   const selectedSolarOffset =
@@ -67,7 +108,10 @@ export default function App() {
           <h1>World Time</h1>
           <p>A Live World Clock, click any city to see its time.</p>
         </div>
-        <ThemeToggle choice={themeChoice} onChange={setThemeChoice} />
+        <div className="header-toggles">
+          <HourFormatToggle choice={hourFormatChoice} onChange={setHourFormatChoice} />
+          <ThemeToggle choice={themeChoice} onChange={setThemeChoice} />
+        </div>
       </header>
 
       <main className="app-main">
@@ -80,8 +124,8 @@ export default function App() {
             flyToRequest={flyToRequest}
           />
           <div className="globe-hint">
-            Drag to rotate · scroll to zoom · click an amber marker for a city, or click anywhere else on the
-            globe for an approximate local time
+            Drag to rotate · scroll to zoom · tap near a marker for a city, or tap anywhere else on the globe
+            for an approximate local time
           </div>
           <CitySearch onSelectCity={(city) => selectCity(city, true)} />
         </section>
@@ -93,6 +137,7 @@ export default function App() {
             now={now}
             timeZone={userTimeZone}
             accent="user"
+            hour12={hour12}
           />
 
           {selection && (
@@ -107,6 +152,30 @@ export default function App() {
               timeZone={selectedTimeZone}
               solarOffsetHours={selectedSolarOffset}
               accent="selection"
+              hour12={hour12}
+              headerExtra={
+                <>
+                  {selection.kind === 'city' && (
+                    <button
+                      className={`clock-card-icon-btn ${isPinned(selection.city) ? 'active' : ''}`}
+                      onClick={() => togglePin(selection.city)}
+                    >
+                      {isPinned(selection.city) ? 'Pinned' : 'Pin'}
+                    </button>
+                  )}
+                  <CopyLinkButton />
+                </>
+              }
+            />
+          )}
+
+          {pinned.length > 0 && (
+            <PinnedCitiesStrip
+              cities={pinned}
+              now={now}
+              hour12={hour12}
+              onSelect={(city) => selectCity(city, true)}
+              onRemove={removePin}
             />
           )}
 
