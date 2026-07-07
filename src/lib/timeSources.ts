@@ -87,31 +87,17 @@ export const TIME_SOURCE_DEFS: TimeSourceDef[] = [
     },
   },
   {
-    id: 'coinbase-time',
-    name: 'Coinbase server time',
-    url: 'https://api.coinbase.com/v2/time',
+    id: 'kucoin-time',
+    name: 'KuCoin server time',
+    url: 'https://api.kucoin.com/api/v1/timestamp',
     method: 'GET (JSON)',
     protocol: 'HTTPS REST, financial exchange infrastructure, unrelated to the source above',
     description:
-      'The same idea as the Binance source — a major exchange’s dedicated clock-sync endpoint — but a completely separate company and infrastructure, used here purely as an independent, high-uptime reference clock (second-level precision).',
+      'The same idea as the Binance source — a major exchange’s dedicated clock-sync endpoint — but a completely separate company and infrastructure, used here as an independent, high-uptime reference clock (millisecond precision).',
     parse: (body) => {
-      const data = JSON.parse(body) as { data?: { epoch?: number } }
-      if (typeof data.data?.epoch !== 'number') throw new Error('unexpected payload')
-      return data.data.epoch * 1000
-    },
-  },
-  {
-    id: 'kraken-time',
-    name: 'Kraken server time',
-    url: 'https://api.kraken.com/0/public/Time',
-    method: 'GET (JSON)',
-    protocol: 'HTTPS REST, financial exchange infrastructure, unrelated to the sources above',
-    description:
-      'A third exchange’s public clock-sync endpoint, on its own infrastructure independent of Binance and Coinbase — a fourth network data point (second-level precision) so the consensus doesn’t lean on any single company.',
-    parse: (body) => {
-      const data = JSON.parse(body) as { result?: { unixtime?: number } }
-      if (typeof data.result?.unixtime !== 'number') throw new Error('unexpected payload')
-      return data.result.unixtime * 1000
+      const data = JSON.parse(body) as { data?: number }
+      if (typeof data.data !== 'number') throw new Error('unexpected payload')
+      return data.data
     },
   },
 ]
