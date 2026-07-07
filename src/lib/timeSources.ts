@@ -57,28 +57,13 @@ export const TIME_SOURCE_DEFS: TimeSourceDef[] = [
     parse: () => Date.now(),
   },
   {
-    id: 'worldtimeapi',
-    name: 'WorldTimeAPI',
-    url: 'https://worldtimeapi.org/api/timezone/Etc/UTC',
-    method: 'GET (JSON)',
-    protocol: 'HTTPS REST, server time backed by NTP',
-    description:
-      'Public REST API that returns the current UTC time as JSON, including the unix timestamp. The service itself keeps its clock disciplined via NTP.',
-    parse: (body) => {
-      const data = JSON.parse(body) as { unixtime?: number; utc_datetime?: string }
-      if (typeof data.unixtime === 'number') return data.unixtime * 1000
-      if (data.utc_datetime) return new Date(data.utc_datetime).getTime()
-      throw new Error('unexpected payload')
-    },
-  },
-  {
     id: 'timeapi_io',
     name: 'TimeAPI.io',
     url: 'https://timeapi.io/api/Time/current/zone?timeZone=Etc/UTC',
     method: 'GET (JSON)',
     protocol: 'HTTPS REST',
     description:
-      'Independent third-party time REST API used here as a cross-check against WorldTimeAPI, so a single provider’s outage or drift cannot silently skew the displayed time.',
+      'A dedicated third-party time REST API, kept as the anchor time-specific source in the lineup.',
     parse: (body) => {
       const data = JSON.parse(body) as {
         year: number; month: number; day: number
@@ -88,31 +73,45 @@ export const TIME_SOURCE_DEFS: TimeSourceDef[] = [
     },
   },
   {
-    id: 'iss-now',
-    name: 'Where The ISS At (satellite tracker)',
-    url: 'https://api.wheretheiss.at/v1/satellites/25544',
+    id: 'binance-time',
+    name: 'Binance server time',
+    url: 'https://api.binance.com/api/v3/time',
     method: 'GET (JSON)',
-    protocol: 'HTTPS REST, unrelated third-party service',
+    protocol: 'HTTPS REST, financial exchange infrastructure',
     description:
-      'Not a time API at all — a public satellite-tracking service that stamps every response with the current Unix time it used to compute the ISS’s position. Used here purely as an independent server clock with no shared infrastructure with the time-specific APIs above (only second-level precision, so expect a larger offset spread than the others).',
+      'Not a time API at all — a global crypto exchange’s clock-sync endpoint, published specifically so trading clients can detect drift before their signed API requests get rejected. Millisecond precision and run on infrastructure with a strong uptime incentive, since a lot of live trading depends on it.',
     parse: (body) => {
-      const data = JSON.parse(body) as { timestamp?: number }
-      if (typeof data.timestamp !== 'number') throw new Error('unexpected payload')
-      return data.timestamp * 1000
+      const data = JSON.parse(body) as { serverTime?: number }
+      if (typeof data.serverTime !== 'number') throw new Error('unexpected payload')
+      return data.serverTime
     },
   },
   {
-    id: 'open-notify',
-    name: 'Open Notify (ISS tracker)',
-    url: 'https://api.open-notify.org/iss-now.json',
+    id: 'coinbase-time',
+    name: 'Coinbase server time',
+    url: 'https://api.coinbase.com/v2/time',
     method: 'GET (JSON)',
-    protocol: 'HTTPS REST, unrelated third-party service on separate infrastructure from the ISS source above',
+    protocol: 'HTTPS REST, financial exchange infrastructure, unrelated to the source above',
     description:
-      'The same borrowed-timestamp trick as Where The ISS At, but a completely separate hobby-run service (open-notify.org) tracking the same satellite independently — different maintainer, different servers, different codebase. A sixth data point that shares nothing with any other source here except the fact that both happen to track the ISS (second-level precision).',
+      'The same idea as the Binance source — a major exchange’s dedicated clock-sync endpoint — but a completely separate company and infrastructure, used here purely as an independent, high-uptime reference clock (second-level precision).',
     parse: (body) => {
-      const data = JSON.parse(body) as { timestamp?: number }
-      if (typeof data.timestamp !== 'number') throw new Error('unexpected payload')
-      return data.timestamp * 1000
+      const data = JSON.parse(body) as { data?: { epoch?: number } }
+      if (typeof data.data?.epoch !== 'number') throw new Error('unexpected payload')
+      return data.data.epoch * 1000
+    },
+  },
+  {
+    id: 'kraken-time',
+    name: 'Kraken server time',
+    url: 'https://api.kraken.com/0/public/Time',
+    method: 'GET (JSON)',
+    protocol: 'HTTPS REST, financial exchange infrastructure, unrelated to the sources above',
+    description:
+      'A third exchange’s public clock-sync endpoint, on its own infrastructure independent of Binance and Coinbase — a fourth network data point (second-level precision) so the consensus doesn’t lean on any single company.',
+    parse: (body) => {
+      const data = JSON.parse(body) as { result?: { unixtime?: number } }
+      if (typeof data.result?.unixtime !== 'number') throw new Error('unexpected payload')
+      return data.result.unixtime * 1000
     },
   },
 ]
