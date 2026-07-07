@@ -91,6 +91,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 - Added Kotlin Android (`WebView` + `WebViewAssetLoader`) and Swift/SwiftUI iOS (`WKWebView` + a custom `app://` scheme handler and CoreLocation geolocation bridge) apps that wrap this web app natively — see [Mobile apps](#mobile-apps)
 - Added a GitHub Actions workflow (`.github/workflows/android-build.yml`) that builds a debug `.apk` on every push/PR touching the app and uploads it as a downloadable artifact
+- Added a GitHub Actions workflow (`.github/workflows/ios-build.yml`) that builds an unsigned iOS Simulator app on every push/PR touching the app and uploads it as a downloadable artifact (a real device `.ipa` needs an Apple Developer signing certificate this repo doesn't have configured)
 - Replaced Coinbase, Kraken, and KuCoin (all failed CORS in real-world testing) with timeapi.world and time.now; documented why real NTP servers can't be queried from a browser at all (UDP-only protocol, no browser socket API)
 - Swapped WorldTimeAPI and two hobby-run ISS-tracker sources for exchange clock-sync endpoints after field reports of consistent failures
 - Added idle behavior: return to your location after 10s idle, then a slow 1-rev/min auto-spin after 15s

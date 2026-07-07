@@ -55,6 +55,30 @@ Then just build and run from Xcode (⌘R) — the "Sync Web Assets" build phase
 builds the web app and refreshes `WorldTime/Resources/www` automatically.
 Re-run `xcodegen generate` any time `project.yml` changes.
 
+### Prebuilt Simulator app via CI
+
+[`.github/workflows/ios-build.yml`](../.github/workflows/ios-build.yml) builds
+an **unsigned iOS Simulator app** on GitHub's macOS runners on every push/PR
+that touches the app (and on demand via "Run workflow"), and uploads it as a
+zipped artifact (`world-time-ios-simulator`). Download it, unzip, then either
+drag `WorldTime.app` onto a running Simulator window or install it with
+`xcrun simctl install booted WorldTime.app`.
+
+This is **not** a device-installable `.ipa`: no Apple Developer signing
+certificate or provisioning profile is configured for this repo, so real
+devices need those set up first (see below).
+
+### Building a real-device `.ipa`
+
+To get something installable on a physical iPhone, you need your own Apple
+Developer Program membership. Locally, that's just a matter of opening
+`WorldTime.xcodeproj` in Xcode, setting your team under Signing & Capabilities,
+and building for a connected device or archiving (Product → Archive). To do
+it in CI instead, you'd add your signing certificate (as a base64-encoded
+`.p12` secret) and provisioning profile to this repo's GitHub Actions secrets
+and extend `ios-build.yml` to import them and build/export with
+`CODE_SIGNING_ALLOWED=YES` and a real team ID — ask if you want that wired up.
+
 ## Known limitation of this change
 
 This was developed in a sandboxed Linux environment with no Xcode, no iOS

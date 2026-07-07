@@ -1,0 +1,69 @@
+name: Build iOS Simulator App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - '.github/workflows/ios-build.yml'
+  pull_request:
+    paths:
+      - 'ios/**'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - '.github/workflows/ios-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    # There's no Apple Developer signing certificate/provisioning profile
+    # configured for this repo, so this builds an unsigned app for the iOS
+    # Simulator rather than a device-installable .ipa.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build for iOS Simulator (unsigned)
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project WorldTime.xcodeproj \
+            -scheme WorldTime \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Zip the .app
+        working-directory: ios/build/Build/Products/Debug-iphonesimulator
+        run: ditto -c -k --sequesterRsrc --keepParent WorldTime.app WorldTime-iphonesimulator.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: world-time-ios-simulator
+          path: ios/build/Build/Products/Debug-iphonesimulator/WorldTime-iphonesimulator.zip
+          if-no-files-found: error
