@@ -39,12 +39,17 @@ Note: real NTP servers (`pool.ntp.org`, `time.windows.com`, etc.) are deliberate
 - No backend — a static site deployed to [GitHub Pages](https://pages.github.com/) via GitHub Actions
 - `city-timezones` (bundled, code-split) for the ~7,300-city search index
 
-## Android app
+## Mobile apps
 
-The [`android/`](android/) directory contains a Kotlin Android app that
-wraps this web app in a WebView (see [`android/README.md`](android/README.md)
-for details and build instructions). It reuses the web app's code as-is
-rather than reimplementing the globe/clock/search natively.
+Both wrap this web app in a native WebView rather than reimplementing the
+globe/clock/search natively, so they stay in sync with the web app
+automatically:
+
+- [`android/`](android/) — Kotlin, `WebView` + `WebViewAssetLoader`. See
+  [`android/README.md`](android/README.md).
+- [`ios/`](ios/) — Swift/SwiftUI, `WKWebView` + a custom `app://` scheme
+  handler and a CoreLocation-backed geolocation bridge. See
+  [`ios/README.md`](ios/README.md).
 
 ## Getting started
 
