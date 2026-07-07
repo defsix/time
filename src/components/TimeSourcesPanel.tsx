@@ -59,10 +59,11 @@ export default function TimeSourcesPanel({ results, consensusOffset, lastSyncedA
         ))}
       </div>
       <p className="sources-footnote">
-        Each source is fetched independently and timed with the browser's Performance API. The offset for each
-        network source estimates one-way latency as half the round trip (NTP-style) and compares the result to
-        your device clock. The consensus value used to correct the displayed time is the median offset across all
-        successfully-reached sources, so a single slow or wrong API can't skew the result.
+        Each source is fetched independently and timed with the browser's Performance API, retrying once on a
+        dropped or slow connection before it's marked failed — mobile networks routinely stall one attempt in a
+        row. The offset for each network source estimates one-way latency as half the round trip (NTP-style) and
+        compares the result to your device clock. The consensus value used to correct the displayed time is the
+        median offset across all successfully-reached sources, so a single slow or wrong API can't skew the result.
       </p>
     </div>
   )
