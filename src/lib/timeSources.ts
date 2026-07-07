@@ -112,36 +112,47 @@ async function measureSource(def: TimeSourceDef): Promise<TimeSourceResult> {
     return { ...base, status: 'ok', latencyMs: 0, offsetMs: 0, raw: new Date().toISOString(), measuredAt: performance.now() }
   }
 
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 6000)
-  const t0 = performance.now()
-  try {
-    const res = await fetch(def.url, { signal: controller.signal, cache: 'no-store' })
-    const t1 = performance.now()
-    const body = await res.text()
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const sourceMs = def.parse(body, res.headers)
-    const roundTrip = t1 - t0
-    const estimatedSourceNowAtT1 = sourceMs + roundTrip / 2
-    const localNowAtT1 = Date.now()
-    const offsetMs = localNowAtT1 - estimatedSourceNowAtT1
-    return {
-      ...base,
-      status: 'ok',
-      latencyMs: Math.round(roundTrip),
-      offsetMs: Math.round(offsetMs),
-      raw: body.slice(0, 400),
-      measuredAt: t1,
+  const REQUEST_TIMEOUT_MS = 9000
+  const MAX_ATTEMPTS = 2 // real-world mobile networks routinely drop or stall one attempt in a row
+
+  let lastError: unknown = null
+  let lastLatency = 0
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    const t0 = performance.now()
+    try {
+      const res = await fetch(def.url, { signal: controller.signal, cache: 'no-store' })
+      const t1 = performance.now()
+      const body = await res.text()
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const sourceMs = def.parse(body, res.headers)
+      const roundTrip = t1 - t0
+      const estimatedSourceNowAtT1 = sourceMs + roundTrip / 2
+      const localNowAtT1 = Date.now()
+      const offsetMs = localNowAtT1 - estimatedSourceNowAtT1
+      return {
+        ...base,
+        status: 'ok',
+        latencyMs: Math.round(roundTrip),
+        offsetMs: Math.round(offsetMs),
+        raw: body.slice(0, 400),
+        measuredAt: t1,
+      }
+    } catch (err) {
+      lastError = err
+      lastLatency = performance.now() - t0
+      if (attempt < MAX_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 400))
+    } finally {
+      clearTimeout(timeout)
     }
-  } catch (err) {
-    return {
-      ...base,
-      status: 'error',
-      error: err instanceof Error ? err.message : String(err),
-      latencyMs: Math.round(performance.now() - t0),
-    }
-  } finally {
-    clearTimeout(timeout)
+  }
+
+  return {
+    ...base,
+    status: 'error',
+    error: lastError instanceof Error ? lastError.message : String(lastError),
+    latencyMs: Math.round(lastLatency),
   }
 }
 
