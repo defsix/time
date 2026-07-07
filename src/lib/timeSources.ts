@@ -86,6 +86,36 @@ export const TIME_SOURCE_DEFS: TimeSourceDef[] = [
       return data.serverTime
     },
   },
+  {
+    id: 'timeapi-world',
+    name: 'timeapi.world',
+    url: 'https://gateway.timeapi.world/timezone/Etc/UTC',
+    method: 'GET (JSON)',
+    protocol: 'HTTPS REST, Cloudflare Workers edge deployment',
+    description:
+      'An HTTP-based time and timezone API — a modern, actively-maintained drop-in replacement for the now-sunset WorldTimeAPI, built on Cloudflare Workers for fast, globally-distributed edge responses (its own numbers claim sub-40ms p99). Returns the same unixtime/utc_datetime fields the original did.',
+    parse: (body) => {
+      const data = JSON.parse(body) as { unixtime?: number; utc_datetime?: string }
+      if (typeof data.unixtime === 'number') return data.unixtime * 1000
+      if (data.utc_datetime) return new Date(data.utc_datetime).getTime()
+      throw new Error('unexpected payload')
+    },
+  },
+  {
+    id: 'time-now',
+    name: 'time.now',
+    url: 'https://time.now/developer/api/timezone/UTC',
+    method: 'GET (JSON)',
+    protocol: 'HTTPS REST, independent infrastructure from the sources above',
+    description:
+      'Another free, no-key, CORS-enabled HTTP time/timezone API in the same WorldTimeAPI-compatible family as timeapi.world, but a separate project and infrastructure — a fifth independent data point.',
+    parse: (body) => {
+      const data = JSON.parse(body) as { unixtime?: number; datetime?: string }
+      if (typeof data.unixtime === 'number') return data.unixtime * 1000
+      if (data.datetime) return new Date(data.datetime).getTime()
+      throw new Error('unexpected payload')
+    },
+  },
 ]
 
 // Real NTP servers (pool.ntp.org, time.windows.com, time.google.com, etc.)

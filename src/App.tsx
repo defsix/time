@@ -199,9 +199,10 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        Built with Three.js. Time cross-checked against TimeAPI.io and Binance's public clock-sync endpoint —
-        see the Time Sources panel for live tech details on each. Sunrise, sunset, and moon phase are computed
-        locally from standard solar/lunar position formulas.
+        Built with Three.js. Time cross-checked against TimeAPI.io, Binance's clock-sync endpoint, and two
+        independent WorldTimeAPI-compatible HTTP time services (timeapi.world, time.now) — see the Time Sources
+        panel for live tech details on each. Sunrise, sunset, and moon phase are computed locally from standard
+        solar/lunar position formulas.
       </footer>
     </div>
   )
