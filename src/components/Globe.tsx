@@ -218,17 +218,29 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
     )
     scene.add(hitSphere)
 
-    // City markers
+    // City markers. Each has a small visible dot plus a much bigger invisible
+    // hit-sphere at the same position used only for raycasting — clicking or
+    // tapping near a marker (not pixel-perfect on the tiny dot) still selects
+    // it, which matters a lot on touchscreens.
     const markerGroup = new THREE.Group()
     const markerMeshes: THREE.Mesh[] = []
+    const markerHitMeshes: THREE.Mesh[] = []
     const markerGeo = new THREE.SphereGeometry(0.028, 12, 12)
+    const markerHitGeo = new THREE.SphereGeometry(0.08, 8, 8)
     CITIES.forEach((city) => {
       const mat = new THREE.MeshBasicMaterial({ color: 0xffb347 })
       const mesh = new THREE.Mesh(markerGeo, mat)
-      mesh.position.copy(latLonToVector3(city.lat, city.lon, RADIUS * 1.01))
+      const position = latLonToVector3(city.lat, city.lon, RADIUS * 1.01)
+      mesh.position.copy(position)
       mesh.userData.city = city
       markerGroup.add(mesh)
       markerMeshes.push(mesh)
+
+      const hitMesh = new THREE.Mesh(markerHitGeo, new THREE.MeshBasicMaterial({ visible: false }))
+      hitMesh.position.copy(position)
+      hitMesh.userData.city = city
+      markerGroup.add(hitMesh)
+      markerHitMeshes.push(hitMesh)
     })
     scene.add(markerGroup)
 
@@ -317,12 +329,12 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
     function handlePointerUp(ev: PointerEvent) {
       const dx = ev.clientX - downPos.x
       const dy = ev.clientY - downPos.y
-      if (Math.hypot(dx, dy) > 6) return // was a drag, not a click
+      if (Math.hypot(dx, dy) > 8) return // was a drag, not a click/tap
 
       pointerToNDC(ev)
       raycaster.setFromCamera(pointer, camera)
 
-      const markerHits = raycaster.intersectObjects(markerMeshes)
+      const markerHits = raycaster.intersectObjects(markerHitMeshes)
       if (markerHits.length > 0) {
         const city = markerHits[0].object.userData.city as City
         onSelectCity(city)
@@ -345,7 +357,7 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
     function handlePointerMove(ev: PointerEvent) {
       pointerToNDC(ev)
       raycaster.setFromCamera(pointer, camera)
-      const hits = raycaster.intersectObjects(markerMeshes)
+      const hits = raycaster.intersectObjects(markerHitMeshes)
       renderer.domElement.style.cursor = hits.length > 0 ? 'pointer' : 'grab'
     }
 

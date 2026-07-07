@@ -31,6 +31,12 @@
   color: var(--text-dim);
 }
 
+.header-toggles {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .theme-toggle {
   display: inline-flex;
   border: 1px solid var(--panel-border);
@@ -145,9 +151,102 @@
   color: var(--text-dim);
 }
 
+.clock-card-header-right {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.clock-card-icon-btn {
+  background: none;
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.clock-card-icon-btn:hover {
+  color: var(--text);
+  border-color: var(--accent-selection);
+}
+
+.clock-card-icon-btn.active {
+  color: var(--accent-selection);
+  border-color: var(--accent-selection);
+}
+
 .clock-card-title {
   font-weight: 600;
   color: var(--text);
+}
+
+.pinned-strip {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.pinned-tile {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 0.55rem 0.9rem 0.5rem;
+  cursor: pointer;
+  text-align: left;
+  min-width: 108px;
+}
+
+.pinned-tile:hover {
+  border-color: var(--accent-selection);
+}
+
+.pinned-tile-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.pinned-tile-name {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.pinned-tile-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--panel-hover);
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pinned-tile-remove:hover {
+  color: var(--accent-error);
+  border-color: var(--accent-error);
 }
 
 .clock-card-time {
@@ -213,6 +312,13 @@
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
+}
+
+.city-search-loading {
+  padding: 0.4rem 0.6rem;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-style: italic;
 }
 
 .city-search-results button:hover {
