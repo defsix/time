@@ -94,6 +94,8 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
     controls.maxDistance = 10
     controls.autoRotate = true
     controls.autoRotateSpeed = 0.4
+    controls.rotateSpeed = 0.35
+    controls.zoomSpeed = 0.6
 
     let labelVisible = false
     let labelTarget: THREE.Vector3 | null = null
