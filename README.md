@@ -90,6 +90,8 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-08
 
+- Added city alarms to the Android app: set an alarm for a specific time in whichever city you're viewing (e.g. "ring at 7:00 AM in Tokyo"), backed by `AlarmManager.setAlarmClock()` with a graceful inexact-window fallback, a full-screen ringing activity, and reboot-survival
+- Added Nightstand mode to the Android app: a full-screen dimmed clock that keeps the screen on (Web Wake Lock API + a native fallback), for propping the phone up overnight
 - Fixed the Android app failing to load at all (`net::ERR_NAME_NOT_RESOLVED`) — it was loading `https://appassets.androidx.net/...`, but `WebViewAssetLoader`'s real default domain is `appassets.androidplatform.net`, so every request missed the interceptor and fell through to a real (failing) DNS lookup
 - The Android CI workflow now also republishes the debug APK to a rolling `android-debug-latest` GitHub Release on every push to `main`, giving a stable download URL that doesn't expire (unlike per-run workflow artifacts)
 

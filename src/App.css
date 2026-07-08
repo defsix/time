@@ -545,3 +545,164 @@
   color: var(--text-faint);
   padding-top: 0.5rem;
 }
+
+.city-alarms {
+  position: relative;
+}
+
+.city-alarms-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 10;
+  width: min(280px, 80vw);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 0.8rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.city-alarms-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.city-alarms-time-input {
+  background: var(--panel-hover);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.3rem 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.city-alarms-set-btn {
+  flex: 1;
+  background: var(--panel-hover);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.city-alarms-set-btn:hover {
+  border-color: var(--accent-selection);
+}
+
+.city-alarms-status {
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.city-alarms-nudge {
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--accent-warn);
+  line-height: 1.4;
+}
+
+.city-alarms-nudge-btn {
+  background: none;
+  border: 1px solid var(--accent-warn);
+  color: var(--accent-warn);
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.city-alarms-list {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.city-alarms-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.city-alarms-cancel-btn {
+  background: none;
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.city-alarms-cancel-btn:hover {
+  color: var(--accent-error);
+  border-color: var(--accent-error);
+}
+
+.nightstand-toggle-btn {
+  background: var(--panel-hover);
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.nightstand-toggle-btn:hover {
+  color: var(--text);
+  border-color: var(--accent-selection);
+}
+
+.nightstand {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  color: #ddd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.nightstand-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 300;
+  font-size: min(22vw, 9rem);
+  line-height: 1;
+  color: #fff;
+}
+
+.nightstand-date {
+  margin-top: 0.8rem;
+  font-size: 1.2rem;
+  color: #999;
+}
+
+.nightstand-label {
+  margin-top: 0.3rem;
+  font-size: 1rem;
+  color: #666;
+}
+
+.nightstand-hint {
+  position: absolute;
+  bottom: 2rem;
+  font-size: 0.75rem;
+  color: #444;
+}
