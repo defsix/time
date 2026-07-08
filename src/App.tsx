@@ -120,6 +120,9 @@ export default function App() {
         timeZone={selection?.kind === 'city' ? selection.city.tz : userTimeZone}
         label={selection?.kind === 'city' ? `${selection.city.name}, ${selection.city.country}` : 'Your Location'}
         hour12={hour12}
+        selectedCityName={selection?.kind === 'city' ? selection.city.name : null}
+        userLocation={userLocation}
+        pinnedCities={pinned}
         onExit={() => setNightstandMode(false)}
       />
     )

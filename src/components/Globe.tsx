@@ -22,6 +22,10 @@ interface GlobeProps {
   selectedCityName: string | null
   userLocation: { lat: number; lon: number } | null
   flyToRequest: FlyToRequest | null
+  /** Skips the idle-triggered auto-spin and just always rotates, e.g. for Nightstand mode. */
+  forceAutoRotate?: boolean
+  /** OrbitControls unit: seconds per revolution at 60fps = 60 / speed. Only used with forceAutoRotate. */
+  autoRotateSpeed?: number
 }
 
 // Colors for the wireframe overlay (graticule, time-zone meridians, country
@@ -51,7 +55,15 @@ function subsolarPoint(date: Date): { lat: number; lon: number } {
   return { lat: declination, lon }
 }
 
-export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, userLocation, flyToRequest }: GlobeProps) {
+export default function Globe({
+  onSelectCity,
+  onSelectPoint,
+  selectedCityName,
+  userLocation,
+  flyToRequest,
+  forceAutoRotate = false,
+  autoRotateSpeed,
+}: GlobeProps) {
   const mountRef = useRef<HTMLDivElement>(null)
   const selectedCityNameRef = useRef<string | null>(null)
   useEffect(() => {
@@ -95,8 +107,8 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
     controls.dampingFactor = 0.08
     controls.minDistance = 3
     controls.maxDistance = 10
-    controls.autoRotate = false
-    controls.autoRotateSpeed = AUTO_ROTATE_SPEED
+    controls.autoRotate = forceAutoRotate
+    controls.autoRotateSpeed = forceAutoRotate ? (autoRotateSpeed ?? AUTO_ROTATE_SPEED) : AUTO_ROTATE_SPEED
     controls.rotateSpeed = 0.35
     controls.zoomSpeed = 0.6
 
@@ -457,7 +469,11 @@ export default function Globe({ onSelectCity, onSelectPoint, selectedCityName, u
       renderer.render(scene, camera)
     }
     animate()
-    resetIdleTimers()
+    // forceAutoRotate (Nightstand mode) already set autoRotate/autoRotateSpeed
+    // above and skips the idle fly-home/auto-spin cycle entirely — it should
+    // just rotate immediately at the requested speed, not drift through the
+    // normal idle countdown first.
+    if (!forceAutoRotate) resetIdleTimers()
 
     return () => {
       cancelAnimationFrame(frameId)
