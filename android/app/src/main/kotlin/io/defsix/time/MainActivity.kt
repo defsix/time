@@ -22,8 +22,9 @@ import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
  * sync, sun/moon panel) in a WebView. All product logic lives in the web app
  * under src/main/assets/www (synced from the repo root's dist-android build);
  * this activity is just the native shell: permissions, back navigation, and
- * serving the bundled assets over a real origin so fetch()/CORS behave the
- * same as they do on the deployed site.
+ * serving the bundled assets over WebViewAssetLoader.DEFAULT_DOMAIN
+ * (appassets.androidplatform.net) so fetch()/CORS behave the same as they do
+ * on the deployed site.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -57,7 +58,7 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
         } else {
-            webView.loadUrl("https://appassets.androidx.net/assets/www/index.html")
+            webView.loadUrl("https://${WebViewAssetLoader.DEFAULT_DOMAIN}/assets/www/index.html")
         }
     }
 

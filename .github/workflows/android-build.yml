@@ -27,6 +27,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -52,3 +54,20 @@ jobs:
           name: world-time-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # Gives a stable URL that always points at the newest build from main,
+      # instead of a per-run artifact link that expires after ~90 days.
+      - name: Publish to the rolling "latest" release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-debug-latest
+          name: Android (latest debug build)
+          body: |
+            Automatically rebuilt and replaced on every push to `main`
+            (currently commit ${{ github.sha }}). This is a **debug build,
+            not signed for distribution** — install directly, e.g.
+            `adb install -r app-debug.apk`.
+          prerelease: true
+          make_latest: false
+          files: android/app/build/outputs/apk/debug/app-debug.apk
