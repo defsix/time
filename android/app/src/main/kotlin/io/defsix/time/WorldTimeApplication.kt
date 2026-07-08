@@ -3,7 +3,6 @@ package io.defsix.time
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.Context
 import android.media.AudioAttributes
 
 class WorldTimeApplication : Application() {
@@ -32,7 +31,7 @@ class WorldTimeApplication : Application() {
             setBypassDnd(true)
         }
 
-        getSystemService(Context.NOTIFICATION_SERVICE, NotificationManager::class.java)
+        getSystemService(NotificationManager::class.java)
             .createNotificationChannel(channel)
     }
 }
