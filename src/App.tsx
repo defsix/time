@@ -8,6 +8,9 @@ import HourFormatToggle from './components/HourFormatToggle'
 import CopyLinkButton from './components/CopyLinkButton'
 import PinnedCitiesStrip from './components/PinnedCitiesStrip'
 import SolarLunarCard from './components/SolarLunarCard'
+import CityAlarms from './components/CityAlarms'
+import NightstandMode from './components/NightstandMode'
+import { isAndroidAlarmBridgeAvailable } from './lib/androidBridge'
 import { useTimeSources } from './lib/useTimeSources'
 import { useTheme } from './lib/useTheme'
 import { useHourFormat } from './lib/useHourFormat'
@@ -42,6 +45,7 @@ export default function App() {
     const initial = selectionFromShareParams()
     return initial?.kind === 'city' ? { city: initial.city, nonce: Date.now() } : null
   })
+  const [nightstandMode, setNightstandMode] = useState(false)
   const hasSharedSelectionRef = useRef(selection !== null)
 
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -109,6 +113,18 @@ export default function App() {
         ? { lat: userLocation.lat, lon: userLocation.lon, tz: userTimeZone, label: 'Your Location' }
         : null
 
+  if (nightstandMode) {
+    return (
+      <NightstandMode
+        now={now}
+        timeZone={selection?.kind === 'city' ? selection.city.tz : userTimeZone}
+        label={selection?.kind === 'city' ? `${selection.city.name}, ${selection.city.country}` : 'Your Location'}
+        hour12={hour12}
+        onExit={() => setNightstandMode(false)}
+      />
+    )
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -117,6 +133,9 @@ export default function App() {
           <p>A Live World Clock, click any city to see its time.</p>
         </div>
         <div className="header-toggles">
+          <button className="nightstand-toggle-btn" onClick={() => setNightstandMode(true)}>
+            Nightstand
+          </button>
           <HourFormatToggle choice={hourFormatChoice} onChange={setHourFormatChoice} />
           <ThemeToggle choice={themeChoice} onChange={setThemeChoice} />
         </div>
@@ -170,6 +189,9 @@ export default function App() {
                     >
                       {isPinned(selection.city) ? 'Pinned' : 'Pin'}
                     </button>
+                  )}
+                  {selection.kind === 'city' && isAndroidAlarmBridgeAvailable() && (
+                    <CityAlarms city={selection.city} />
                   )}
                   <CopyLinkButton />
                 </>

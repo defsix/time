@@ -24,6 +24,47 @@ React/Three.js code that runs on the live site.
   `WebChromeClient.onGeolocationPermissionsShowPrompt`, backed by a runtime
   `ACCESS_FINE_LOCATION` permission request.
 
+## City alarms
+
+While viewing a city, the clock card's **Alarm** button lets you set an
+alarm for a specific local time *in that city* — e.g. "ring when it's 7:00 AM
+in Tokyo" while you're in New York. This only appears in the Android app
+(feature-detected via `window.AndroidAlarmBridge`, absent on the plain
+website and in the iOS app).
+
+- `src/lib/alarmTime.ts` converts "HH:MM in an IANA zone" to the next future
+  UTC instant using only `Intl.DateTimeFormat` (no timezone database
+  dependency), correctly handling DST.
+- `src/lib/androidBridge.ts` / `src/components/CityAlarms.tsx` are the web
+  side: a time picker, a list of pending alarms, and permission nudges.
+- On the native side (`android/app/.../alarm/`):
+  - `AlarmBridge.kt` is the `@JavascriptInterface` the web app calls.
+  - `AlarmScheduler.kt` uses `AlarmManager.setAlarmClock()` (the same
+    API the built-in Clock app uses) when the exact-alarm special access is
+    granted, and gracefully falls back to a ~10-minute inexact window
+    otherwise — per Android 14's guidance for apps that don't have that
+    permission.
+  - `AlarmStore.kt` persists the alarm list (AlarmManager can't be
+    enumerated), which `BootReceiver.kt` reads to reschedule everything
+    after a reboot (raw alarms don't survive one).
+  - `AlarmReceiver.kt` posts a full-screen-intent notification when the
+    alarm fires; `AlarmRingActivity.kt` is the actual ringing screen
+    (shows over the lock screen, loops the default alarm sound, vibrates,
+    Snooze/Dismiss).
+  - Requires runtime `POST_NOTIFICATIONS` (Android 13+) and the
+    `SCHEDULE_EXACT_ALARM` special access (Settings > Apps > Special app
+    access > Alarms & reminders) for precise timing; the UI prompts for
+    both as needed.
+
+## Nightstand mode
+
+The **Nightstand** header button switches to a full-screen, dimmed clock
+face and keeps the screen on — for propping the phone on a nightstand
+overnight. Uses the standard Web Wake Lock API (`src/lib/useWakeLock.ts`,
+works on the plain website too) with a native `FLAG_KEEP_SCREEN_ON` fallback
+via `window.AndroidDisplayBridge` (`DisplayBridge.kt`) in case a WebView's
+Wake Lock support is unreliable.
+
 ## Building
 
 Prerequisites: Android Studio (or the command-line SDK) and Node.js — Node is
@@ -58,6 +99,9 @@ or browse it at <https://github.com/defsix/time/releases/tag/android-debug-lates
 
 This was developed in a sandboxed environment without an Android SDK and
 without network access to `dl.google.com` / Maven Google, so the Gradle build
-could not be executed end-to-end here. The web app build (`npm run
-build:android`) was verified directly. Please do a first `./gradlew
-assembleDebug` locally before relying on this.
+could not be executed end-to-end here — this includes the city alarms and
+nightstand mode native code (AlarmManager/notification/vibration/MediaPlayer
+APIs), which was cross-checked against Android's documentation but not
+compiled or run on a device. CI (`android-build.yml`) at least confirms it
+compiles; please treat your first real device test of setting and letting an
+alarm ring as the actual first test of that logic.

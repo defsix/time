@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">World Time</string>
+    <string name="alarm_channel_name">City alarms</string>
+    <string name="alarm_channel_description">Alarms set for a specific city\'s local time</string>
+    <string name="alarm_ringing">Alarm</string>
+    <string name="alarm_snooze">Snooze 10 min</string>
+    <string name="alarm_dismiss">Dismiss</string>
 </resources>

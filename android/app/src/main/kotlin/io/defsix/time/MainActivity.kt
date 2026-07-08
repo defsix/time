@@ -2,6 +2,7 @@ package io.defsix.time
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
@@ -13,9 +14,11 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
+import io.defsix.time.alarm.AlarmBridge
 
 /**
  * Hosts the existing World Time web app (Three.js globe, city search, time
@@ -32,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var assetLoader: WebViewAssetLoader
     private var pendingGeolocationOrigin: String? = null
     private var pendingGeolocationCallback: GeolocationPermissions.Callback? = null
+    private var pendingNotificationPermissionCallback: ((Boolean) -> Unit)? = null
 
     private val locationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -42,6 +46,12 @@ class MainActivity : AppCompatActivity() {
             }
             pendingGeolocationOrigin = null
             pendingGeolocationCallback = null
+        }
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            pendingNotificationPermissionCallback?.invoke(granted)
+            pendingNotificationPermissionCallback = null
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +88,9 @@ class MainActivity : AppCompatActivity() {
             ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
         }
 
+        webView.addJavascriptInterface(AlarmBridge(this, webView), "AndroidAlarmBridge")
+        webView.addJavascriptInterface(DisplayBridge(this), "AndroidDisplayBridge")
+
         webView.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(
                 origin: String,
@@ -102,6 +115,26 @@ class MainActivity : AppCompatActivity() {
     private fun hasLocationPermission(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
+
+    /** Called from AlarmBridge, which runs on WebView's background thread. */
+    fun requestNotificationPermission(callback: (Boolean) -> Unit) {
+        runOnUiThread {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                // No runtime permission pre-33 — reflects the user's app
+                // notification settings toggle instead.
+                callback(NotificationManagerCompat.from(this).areNotificationsEnabled())
+                return@runOnUiThread
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                callback(true)
+                return@runOnUiThread
+            }
+            pendingNotificationPermissionCallback = callback
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
