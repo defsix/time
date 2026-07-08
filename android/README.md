@@ -58,12 +58,22 @@ website and in the iOS app).
 
 ## Nightstand mode
 
-The **Nightstand** header button switches to a full-screen, dimmed clock
-face and keeps the screen on — for propping the phone on a nightstand
-overnight. Uses the standard Web Wake Lock API (`src/lib/useWakeLock.ts`,
-works on the plain website too) with a native `FLAG_KEEP_SCREEN_ON` fallback
-via `window.AndroidDisplayBridge` (`DisplayBridge.kt`) in case a WebView's
-Wake Lock support is unreliable.
+The **Nightstand** header button switches to a full-screen ambient display
+and keeps the screen on — for propping the phone on a nightstand overnight:
+
+- The globe itself renders full-bleed in the background, slowly auto-rotating
+  at one revolution per 10 minutes (`Globe`'s `forceAutoRotate` /
+  `autoRotateSpeed` props — a much slower, always-on variant of the existing
+  idle auto-spin, bypassing its fly-home-first behavior).
+- The current local time, date, and pinned cities' times are overlaid on top
+  (`pointer-events: none`, so drags still reach the globe underneath, while a
+  plain tap anywhere still exits).
+- Any pending city alarms are listed too, soonest first.
+
+Keeping the screen on uses the standard Web Wake Lock API
+(`src/lib/useWakeLock.ts`, works on the plain website too) with a native
+`FLAG_KEEP_SCREEN_ON` fallback via `window.AndroidDisplayBridge`
+(`DisplayBridge.kt`) in case a WebView's Wake Lock support is unreliable.
 
 ## Building
 
