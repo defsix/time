@@ -26,11 +26,20 @@ React/Three.js code that runs on the live site.
 
 ## City alarms
 
-While viewing a city, the clock card's **Alarm** button lets you set an
-alarm for a specific local time *in that city* — e.g. "ring when it's 7:00 AM
-in Tokyo" while you're in New York. This only appears in the Android app
-(feature-detected via `window.AndroidAlarmBridge`, absent on the plain
-website and in the iOS app).
+The clock card's **Alarm** button lets you set an alarm for a specific local
+time *there* — e.g. "ring when it's 7:00 AM in Tokyo" while you're in New
+York. It's available on both the "Your Location" card (using your own
+timezone) and the selected-city card (using that city's timezone) — the
+component takes a plain `targetTz`/`targetLabel` pair, not a `City`, so it
+works either way. This only appears in the Android app (feature-detected via
+`window.AndroidAlarmBridge`, absent on the plain website and in the iOS app).
+
+The popover positions itself relative to the toggle button's actual
+on-screen position (measured via `getBoundingClientRect`, clamped to stay
+within the viewport), rather than CSS-anchoring to the button's own edge —
+that button sits mid-row (Pin/Alarm/Copy link), not at the card's edge, so a
+plain `right: 0` anchor could push the fixed-width popover off the left edge
+of narrow screens.
 
 - `src/lib/alarmTime.ts` converts "HH:MM in an IANA zone" to the next future
   UTC instant using only `Intl.DateTimeFormat` (no timezone database
@@ -74,6 +83,32 @@ Keeping the screen on uses the standard Web Wake Lock API
 (`src/lib/useWakeLock.ts`, works on the plain website too) with a native
 `FLAG_KEEP_SCREEN_ON` fallback via `window.AndroidDisplayBridge`
 (`DisplayBridge.kt`) in case a WebView's Wake Lock support is unreliable.
+
+## Status bar / edge-to-edge
+
+`MainActivity` calls `enableEdgeToEdge()` and draws the WebView under the
+system status/navigation bars, rather than relying on a native window
+background there. Previously that background (and the status bar's icon
+color) only ever reflected the *device's* system dark/light mode via the
+`values-night` resource qualifier — completely independent of the web app's
+own Light/Dark/Auto theme choice, which could show as a white bar at the top
+while the app was actually in its dark theme (or during Nightstand mode,
+which is always black regardless of the app theme).
+
+Instead:
+- The page's own background now paints all the way to the screen edges.
+- `window.AndroidDisplayBridge.setStatusBarAppearance(isLightBackground)`
+  (`DisplayBridge.kt`) sets the status bar's icon color at runtime; `App.tsx`
+  calls it whenever the resolved theme or Nightstand mode changes, so it
+  always matches what's actually on screen.
+- Since Android's WebView doesn't support CSS `env(safe-area-inset-*)` the
+  way WKWebView on iOS does, `MainActivity` measures the real system bar
+  insets (`ViewCompat.OnApplyWindowInsetsListener`) and forwards them into
+  the page as `--safe-area-top` / `--safe-area-bottom` CSS custom properties
+  (`injectSafeAreaInsets`, re-applied on every page load too). `index.css`
+  defines those same properties via `env(safe-area-inset-*, 0px)` first, so
+  iOS (with `viewport-fit=cover` now set) and the plain website both get
+  sensible values for free.
 
 ## Building
 

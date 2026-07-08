@@ -12,10 +12,13 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import io.defsix.time.alarm.AlarmBridge
@@ -36,6 +39,8 @@ class MainActivity : AppCompatActivity() {
     private var pendingGeolocationOrigin: String? = null
     private var pendingGeolocationCallback: GeolocationPermissions.Callback? = null
     private var pendingNotificationPermissionCallback: ((Boolean) -> Unit)? = null
+    private var safeAreaTopPx = 0
+    private var safeAreaBottomPx = 0
 
     private val locationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -56,6 +61,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Draws the WebView edge-to-edge (under the status/nav bars) so the
+        // page's own background reaches the physical screen edges instead of
+        // showing a native window background there — which, before this,
+        // only ever reflected the device's system dark/light mode via the
+        // values-night resource qualifier, not the web app's own independent
+        // theme choice (visible as a white bar at the top while the app was
+        // actually in its dark theme). The status bar's icon color is now
+        // set dynamically at runtime instead (see setStatusBarAppearance in
+        // DisplayBridge), and safe-area insets are forwarded to the page as
+        // CSS custom properties below.
+        enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
         assetLoader = WebViewAssetLoader.Builder()
@@ -64,6 +80,14 @@ class MainActivity : AppCompatActivity() {
 
         webView = findViewById(R.id.webView)
         configureWebView(webView)
+
+        ViewCompat.setOnApplyWindowInsetsListener(webView) { _, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            safeAreaTopPx = insets.top
+            safeAreaBottomPx = insets.bottom
+            injectSafeAreaInsets(webView)
+            windowInsets
+        }
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
@@ -86,6 +110,14 @@ class MainActivity : AppCompatActivity() {
                 view: WebView,
                 request: WebResourceRequest
             ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
+
+            override fun onPageFinished(view: WebView, url: String?) {
+                super.onPageFinished(view, url)
+                // Re-apply on every (re)load, since a fresh document has none
+                // of the custom properties the insets listener may have
+                // already set earlier against the previous document.
+                injectSafeAreaInsets(view)
+            }
         }
 
         webView.addJavascriptInterface(AlarmBridge(this, webView), "AndroidAlarmBridge")
@@ -110,6 +142,23 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
         }
+    }
+
+    /**
+     * WebView doesn't support CSS env(safe-area-inset-*) the way WKWebView on
+     * iOS does, so the actual measured system bar insets (converted from raw
+     * pixels to CSS px, i.e. dp) are forwarded as custom properties the page
+     * already falls back to using on other platforms.
+     */
+    private fun injectSafeAreaInsets(webView: WebView) {
+        val density = resources.displayMetrics.density
+        val topDp = (safeAreaTopPx / density).toInt()
+        val bottomDp = (safeAreaBottomPx / density).toInt()
+        webView.evaluateJavascript(
+            "document.documentElement.style.setProperty('--safe-area-top', '${topDp}px');" +
+                "document.documentElement.style.setProperty('--safe-area-bottom', '${bottomDp}px');",
+            null,
+        )
     }
 
     private fun hasLocationPermission(): Boolean =

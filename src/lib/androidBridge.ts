@@ -26,6 +26,7 @@ interface AndroidAlarmBridgeNative {
 
 interface AndroidDisplayBridgeNative {
   setKeepScreenOn(on: boolean): void
+  setStatusBarAppearance(isLightBackground: boolean): void
 }
 
 declare global {
@@ -94,4 +95,9 @@ export function listCityAlarms(): CityAlarm[] {
 
 export function setKeepScreenOn(on: boolean): void {
   window.AndroidDisplayBridge?.setKeepScreenOn(on)
+}
+
+/** Keeps the native status bar icons legible against the page's actual current background. */
+export function setStatusBarAppearance(isLightBackground: boolean): void {
+  window.AndroidDisplayBridge?.setStatusBarAppearance(isLightBackground)
 }
