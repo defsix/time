@@ -46,7 +46,8 @@ globe/clock/search natively, so they stay in sync with the web app
 automatically:
 
 - [`android/`](android/) — Kotlin, `WebView` + `WebViewAssetLoader`. See
-  [`android/README.md`](android/README.md).
+  [`android/README.md`](android/README.md). Latest debug APK:
+  <https://github.com/defsix/time/releases/download/android-debug-latest/app-debug.apk>
 - [`ios/`](ios/) — Swift/SwiftUI, `WKWebView` + a custom `app://` scheme
   handler and a CoreLocation-backed geolocation bridge. See
   [`ios/README.md`](ios/README.md).
@@ -86,6 +87,10 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 </details>
 
 ## Changelog
+
+### 2026-07-08
+
+- The Android CI workflow now also republishes the debug APK to a rolling `android-debug-latest` GitHub Release on every push to `main`, giving a stable download URL that doesn't expire (unlike per-run workflow artifacts)
 
 ### 2026-07-07
 

@@ -42,6 +42,16 @@ builds a debug APK on every push/PR that touches the app (and on demand via
 "Run workflow"). Grab it from the workflow run's **Artifacts** section
 (`world-time-debug-apk`) without needing a local Android SDK.
 
+**Stable download link:** every push to `main` also republishes the APK to a
+rolling GitHub Release, so this URL always points at the latest build (unlike
+the per-run artifact link above, which expires after ~90 days):
+
+```
+https://github.com/defsix/time/releases/download/android-debug-latest/app-debug.apk
+```
+
+or browse it at <https://github.com/defsix/time/releases/tag/android-debug-latest>.
+
 ## Known limitation of this change
 
 This was developed in a sandboxed environment without an Android SDK and
