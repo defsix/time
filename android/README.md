@@ -15,9 +15,11 @@ React/Three.js code that runs on the live site.
   `vite --mode android`, which switches `vite.config.ts` to relative asset
   paths (`./assets/...`) instead of the `/time/` prefix used for GitHub Pages.
 - `MainActivity.kt` serves those bundled assets through
-  `androidx.webkit.WebViewAssetLoader` at `https://appassets.androidx.net/assets/www/`
-  rather than a `file://` URL, so `fetch()` calls to the time-sync APIs see a
-  real HTTPS origin and behave the same as they do on the deployed site.
+  `androidx.webkit.WebViewAssetLoader` at
+  `https://appassets.androidplatform.net/assets/www/` (the library's
+  `DEFAULT_DOMAIN`) rather than a `file://` URL, so `fetch()` calls to the
+  time-sync APIs see a real HTTPS origin and behave the same as they do on
+  the deployed site.
 - Geolocation (used for the nearest-city default) is wired through
   `WebChromeClient.onGeolocationPermissionsShowPrompt`, backed by a runtime
   `ACCESS_FINE_LOCATION` permission request.
