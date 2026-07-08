@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import type { City } from '../lib/cities'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { nextOccurrenceEpoch } from '../lib/alarmTime'
 import {
   type CityAlarm,
@@ -13,8 +12,14 @@ import {
 } from '../lib/androidBridge'
 
 interface CityAlarmsProps {
-  city: City
+  /** IANA time zone the alarm's picked HH:MM is interpreted in. */
+  targetTz: string
+  /** Shown on the button/panel and stored with the alarm, e.g. "Tokyo, Japan" or "Your Location". */
+  targetLabel: string
 }
+
+const PANEL_WIDTH = 280
+const VIEWPORT_MARGIN = 8
 
 function formatAlarmTime(epochMillis: number, timeZone: string): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -25,13 +30,15 @@ function formatAlarmTime(epochMillis: number, timeZone: string): string {
   }).format(new Date(epochMillis))
 }
 
-export default function CityAlarms({ city }: CityAlarmsProps) {
+export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
   const [open, setOpen] = useState(false)
   const [time, setTime] = useState('07:00')
   const [alarms, setAlarms] = useState<CityAlarm[]>([])
   const [needsNotificationPermission, setNeedsNotificationPermission] = useState(false)
   const [needsExactAlarmPermission, setNeedsExactAlarmPermission] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({})
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   function refresh() {
     setAlarms(listCityAlarms())
@@ -39,16 +46,37 @@ export default function CityAlarms({ city }: CityAlarmsProps) {
     setNeedsExactAlarmPermission(!hasExactAlarmPermission())
   }
 
+  // The panel is positioned in fixed (viewport) coordinates, clamped to stay
+  // fully on-screen, rather than CSS-anchored to the toggle button itself —
+  // that button sits mid-row (Pin/Alarm/Copy link), not at the card's right
+  // edge, so a plain `right: 0` anchor let a 280px-wide panel run off the
+  // left edge of the viewport on narrow phones.
+  function positionPanel() {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const width = Math.min(PANEL_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2)
+    const left = Math.min(
+      Math.max(rect.right - width, VIEWPORT_MARGIN),
+      window.innerWidth - width - VIEWPORT_MARGIN,
+    )
+    setPanelStyle({ top: rect.bottom + 8, left, width })
+  }
+
   useEffect(() => {
     if (!open) return
     refresh()
+    positionPanel()
     // The user may have just come back from the system Settings screen
     // after granting the exact-alarm special access — re-check on focus.
     const onVisible = () => {
       if (document.visibilityState === 'visible') refresh()
     }
     document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    window.addEventListener('resize', positionPanel)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('resize', positionPanel)
+    }
   }, [open])
 
   async function handleSetAlarm() {
@@ -65,13 +93,12 @@ export default function CityAlarms({ city }: CityAlarmsProps) {
     const [hourStr, minuteStr] = time.split(':')
     const hour = Number(hourStr)
     const minute = Number(minuteStr)
-    const epoch = nextOccurrenceEpoch(city.tz, hour, minute)
-    const label = `${city.name}, ${city.country}`
+    const epoch = nextOccurrenceEpoch(targetTz, hour, minute)
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-    const result = scheduleCityAlarm(id, label, epoch, label)
+    const result = scheduleCityAlarm(id, targetLabel, epoch, targetLabel)
     if (result === 'ok') {
-      setStatus(`Alarm set for ${formatAlarmTime(epoch, city.tz)} in ${city.name}.`)
+      setStatus(`Alarm set for ${formatAlarmTime(epoch, targetTz)}.`)
     } else if (result === 'ok_inexact') {
       setStatus(`Alarm set (may ring up to ~10 min late — grant exact alarm access below for precise timing).`)
     } else {
@@ -87,12 +114,16 @@ export default function CityAlarms({ city }: CityAlarmsProps) {
 
   return (
     <div className="city-alarms">
-      <button className={`clock-card-icon-btn ${open ? 'active' : ''}`} onClick={() => setOpen((v) => !v)}>
+      <button
+        ref={buttonRef}
+        className={`clock-card-icon-btn ${open ? 'active' : ''}`}
+        onClick={() => setOpen((v) => !v)}
+      >
         Alarm
       </button>
 
       {open && (
-        <div className="city-alarms-panel">
+        <div className="city-alarms-panel" style={panelStyle}>
           <div className="city-alarms-row">
             <input
               type="time"
@@ -101,7 +132,7 @@ export default function CityAlarms({ city }: CityAlarmsProps) {
               className="city-alarms-time-input"
             />
             <button className="city-alarms-set-btn" onClick={handleSetAlarm}>
-              Set alarm for {city.name}
+              Set alarm for {targetLabel}
             </button>
           </div>
 

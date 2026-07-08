@@ -2,7 +2,7 @@
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem clamp(1rem, 4vw, 3rem) 2rem;
+  padding: calc(1.5rem + var(--safe-area-top)) clamp(1rem, 4vw, 3rem) calc(2rem + var(--safe-area-bottom));
   gap: 1.25rem;
   max-width: 1400px;
   margin: 0 auto;
@@ -551,11 +551,12 @@
 }
 
 .city-alarms-panel {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
+  /* top/left/width are computed in JS (CityAlarms.tsx) and clamped to the
+     viewport, since anchoring to the toggle button's own edge (it sits
+     mid-row, not at the card's edge) could push a fixed-width panel off
+     the left side of narrow screens. */
+  position: fixed;
   z-index: 10;
-  width: min(280px, 80vw);
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 12px;
@@ -705,6 +706,7 @@
   justify-content: center;
   text-align: center;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.8);
+  padding: calc(var(--safe-area-top) + 1rem) 1rem calc(var(--safe-area-bottom) + 1rem);
 }
 
 .nightstand-time {
@@ -747,7 +749,7 @@
 
 .nightstand-hint {
   position: absolute;
-  bottom: 2rem;
+  bottom: calc(var(--safe-area-bottom) + 2rem);
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.75rem;

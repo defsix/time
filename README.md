@@ -90,6 +90,9 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-08
 
+- Fixed the Android app showing a white bar at the top in dark theme / Nightstand mode — status bar color previously only tracked the *device's* system dark/light mode, not the web app's own theme; the app is now edge-to-edge with the status bar icon color set dynamically to match what's actually on screen
+- Fixed the city alarm popover overflowing off the left edge of the screen on narrow phones — it now positions itself from the toggle button's actual measured location, clamped to the viewport
+- The Alarm button is now also available on the "Your Location" card, for setting an alarm in your own local time zone (previously only available for a selected city)
 - Nightstand mode now shows the globe full-bleed in the background, slowly auto-rotating at one revolution per 10 minutes, with local time, pinned cities' times, and any pending alarms overlaid on top
 - Added city alarms to the Android app: set an alarm for a specific time in whichever city you're viewing (e.g. "ring at 7:00 AM in Tokyo"), backed by `AlarmManager.setAlarmClock()` with a graceful inexact-window fallback, a full-screen ringing activity, and reboot-survival
 - Added Nightstand mode to the Android app: a full-screen dimmed clock that keeps the screen on (Web Wake Lock API + a native fallback), for propping the phone up overnight

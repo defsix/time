@@ -1,6 +1,14 @@
 :root {
   color-scheme: light dark;
 
+  /* Real values on iOS (WKWebView honors env() once viewport-fit=cover is
+     set); on Android these fall back to 0 here and get overridden directly
+     via MainActivity injecting the actual system bar insets, since Android's
+     WebView doesn't support env(safe-area-inset-*) at all. Zero on the
+     plain website, where there's no native chrome to avoid. */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
   /* dark theme (default) */
   --bg-grad-top: #0b1620;
   --bg-grad-bottom: #05080d;

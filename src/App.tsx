@@ -10,7 +10,7 @@ import PinnedCitiesStrip from './components/PinnedCitiesStrip'
 import SolarLunarCard from './components/SolarLunarCard'
 import CityAlarms from './components/CityAlarms'
 import NightstandMode from './components/NightstandMode'
-import { isAndroidAlarmBridgeAvailable } from './lib/androidBridge'
+import { isAndroidAlarmBridgeAvailable, setStatusBarAppearance } from './lib/androidBridge'
 import { useTimeSources } from './lib/useTimeSources'
 import { useTheme } from './lib/useTheme'
 import { useHourFormat } from './lib/useHourFormat'
@@ -34,7 +34,7 @@ function selectionFromShareParams(): Selection {
 
 export default function App() {
   const { results, resync, lastSyncedAt, correctedNow, consensusOffset } = useTimeSources()
-  const { choice: themeChoice, setChoice: setThemeChoice } = useTheme()
+  const { choice: themeChoice, effective: effectiveTheme, setChoice: setThemeChoice } = useTheme()
   const { choice: hourFormatChoice, hour12, setChoice: setHourFormatChoice } = useHourFormat()
   const { pinned, isPinned, togglePin, removePin } = usePinnedCities()
   const [now, setNow] = useState(() => correctedNow())
@@ -59,6 +59,15 @@ export default function App() {
     const interval = setInterval(() => setNow(correctedNow()), 1000)
     return () => clearInterval(interval)
   }, [correctedNow])
+
+  // Keep the native status bar's icon color legible against whatever the
+  // page's actual background currently is — this is independent of the
+  // device's own system dark/light mode, which is all the native Android
+  // shell's default styling otherwise reacts to. Nightstand mode is always
+  // a black background regardless of the app's theme choice.
+  useEffect(() => {
+    setStatusBarAppearance(!nightstandMode && effectiveTheme === 'light')
+  }, [effectiveTheme, nightstandMode])
 
   useEffect(() => {
     if (!('geolocation' in navigator)) {
@@ -168,6 +177,9 @@ export default function App() {
             timeZone={userTimeZone}
             accent="user"
             hour12={hour12}
+            headerExtra={
+              isAndroidAlarmBridgeAvailable() ? <CityAlarms targetTz={userTimeZone} targetLabel="Your Location" /> : undefined
+            }
           />
 
           {selection && (
@@ -194,7 +206,10 @@ export default function App() {
                     </button>
                   )}
                   {selection.kind === 'city' && isAndroidAlarmBridgeAvailable() && (
-                    <CityAlarms city={selection.city} />
+                    <CityAlarms
+                      targetTz={selection.city.tz}
+                      targetLabel={`${selection.city.name}, ${selection.city.country}`}
+                    />
                   )}
                   <CopyLinkButton />
                 </>
