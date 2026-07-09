@@ -27,8 +27,7 @@ Rather than trusting a single API, the site independently queries several time s
 | Device System Clock | Your OS's own clock (usually NTP-disciplined already) |
 | [TimeAPI.io](https://timeapi.io/) | A dedicated time REST API |
 | [Binance](https://binance-docs.github.io/apidocs/spot/en/#check-server-time) server time | A crypto exchange's clock-sync endpoint, published so trading clients can detect drift |
-| [timeapi.world](https://timeapi.world/) | A modern, Cloudflare Workers-based replacement for the now-sunset WorldTimeAPI |
-| [time.now](https://time.now/developer) | An independent WorldTimeAPI-compatible time service |
+| [time.now](https://time.now/developer) | A WorldTimeAPI-compatible time service |
 
 Note: real NTP servers (`pool.ntp.org`, `time.windows.com`, etc.) are deliberately **not** in this list — NTP runs over raw UDP, and browsers have no UDP socket API. There's no client-side way around that; using genuine NTP data here would require a server-side proxy that speaks NTP and re-exposes it over HTTPS.
 
@@ -45,12 +44,14 @@ Both wrap this web app in a native WebView rather than reimplementing the
 globe/clock/search natively, so they stay in sync with the web app
 automatically:
 
-- [`android/`](android/) — Kotlin, `WebView` + `WebViewAssetLoader`. See
+- [`android/`](android/) — Kotlin, `WebView` + `WebViewAssetLoader`, with
+  city alarms and a Nightstand/bedside clock mode. See
   [`android/README.md`](android/README.md). Latest debug APK:
   <https://github.com/defsix/time/releases/download/android-debug-latest/app-debug.apk>
 - [`ios/`](ios/) — Swift/SwiftUI, `WKWebView` + a custom `app://` scheme
-  handler and a CoreLocation-backed geolocation bridge. See
-  [`ios/README.md`](ios/README.md).
+  handler, a CoreLocation-backed geolocation bridge, and the same city
+  alarms / Nightstand mode as Android (backed by local notifications
+  instead of `AlarmManager`). See [`ios/README.md`](ios/README.md).
 
 ## Getting started
 
@@ -90,6 +91,11 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-09
 
+- Brought the iOS app to feature parity with Android: city alarms (backed by local notifications instead of `AlarmManager`, since iOS has no third-party-accessible exact-alarm scheduling API) and Nightstand mode (keep-awake via `UIApplication.isIdleTimerDisabled`, status bar icon color matching the web app's own theme via a new status-bar-aware view controller)
+- Generalized `src/lib/androidBridge.ts` into `src/lib/nativeBridge.ts`: every call is now Promise-based so the same web-side code drives both Android's synchronous `addJavascriptInterface` bridge and iOS's new async `WKScriptMessageHandler`-based one
+- Android: release build type is now R8-minified, with a signing config that reads from an optional `keystore.properties` file or `ANDROID_KEYSTORE_*` CI secrets (falling back to debug signing when neither is configured); the CI workflow now also builds a `bundleRelease` `.aab` on every push/PR, ready for Play Console upload once a real release keystore is added
+- Added a static privacy policy page (`public/privacy.html`, deployed at `/privacy.html`) for the Play Store / App Store submission flows, since both apps request location and (mobile-only) notification permissions — states plainly that there's no logging or storage beyond the bare minimum a feature needs (kept on-device only), and spells out the specific reason location is requested
+- Removed timeapi.world as a time source — it was failing consistently in the field; down to Device Clock, TimeAPI.io, Binance, and time.now
 - Tapping a point on the globe with no known city now shows the same cyan highlight marker and a coordinate label as selecting a city does, instead of no visual indicator at all — also restored correctly when reopening a shared link that points at a raw coordinate rather than a city
 
 ### 2026-07-08

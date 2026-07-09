@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Globe from './Globe'
 import type { City } from '../lib/cities'
-import { listCityAlarms, type CityAlarm } from '../lib/androidBridge'
+import { listCityAlarms, type CityAlarm } from '../lib/nativeBridge'
 import { useWakeLock } from '../lib/useWakeLock'
 
 // OrbitControls unit: seconds per revolution at 60fps = 60 / speed.
@@ -34,11 +34,20 @@ export default function NightstandMode({
   onExit,
 }: NightstandModeProps) {
   useWakeLock(true)
-  const [alarms, setAlarms] = useState<CityAlarm[]>(() => listCityAlarms())
+  const [alarms, setAlarms] = useState<CityAlarm[]>([])
 
   useEffect(() => {
-    const interval = setInterval(() => setAlarms(listCityAlarms()), 60_000)
-    return () => clearInterval(interval)
+    let cancelled = false
+    async function refresh() {
+      const list = await listCityAlarms()
+      if (!cancelled) setAlarms(list)
+    }
+    refresh()
+    const interval = setInterval(refresh, 60_000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [])
 
   const time = timeAt(now, timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, hour12)

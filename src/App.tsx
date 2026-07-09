@@ -10,7 +10,7 @@ import PinnedCitiesStrip from './components/PinnedCitiesStrip'
 import SolarLunarCard from './components/SolarLunarCard'
 import CityAlarms from './components/CityAlarms'
 import NightstandMode from './components/NightstandMode'
-import { isAndroidAlarmBridgeAvailable, setStatusBarAppearance } from './lib/androidBridge'
+import { isAlarmBridgeAvailable, setStatusBarAppearance } from './lib/nativeBridge'
 import { useTimeSources } from './lib/useTimeSources'
 import { useTheme } from './lib/useTheme'
 import { useHourFormat } from './lib/useHourFormat'
@@ -179,7 +179,7 @@ export default function App() {
             accent="user"
             hour12={hour12}
             headerExtra={
-              isAndroidAlarmBridgeAvailable() ? <CityAlarms targetTz={userTimeZone} targetLabel="Your Location" /> : undefined
+              isAlarmBridgeAvailable() ? <CityAlarms targetTz={userTimeZone} targetLabel="Your Location" /> : undefined
             }
           />
 
@@ -206,7 +206,7 @@ export default function App() {
                       {isPinned(selection.city) ? 'Pinned' : 'Pin'}
                     </button>
                   )}
-                  {selection.kind === 'city' && isAndroidAlarmBridgeAvailable() && (
+                  {selection.kind === 'city' && isAlarmBridgeAvailable() && (
                     <CityAlarms
                       targetTz={selection.city.tz}
                       targetLabel={`${selection.city.name}, ${selection.city.country}`}
@@ -240,10 +240,10 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        Built with Three.js. Time cross-checked against TimeAPI.io, Binance's clock-sync endpoint, and two
-        independent WorldTimeAPI-compatible HTTP time services (timeapi.world, time.now) — see the Time Sources
-        panel for live tech details on each. Sunrise, sunset, and moon phase are computed locally from standard
-        solar/lunar position formulas.
+        Built with Three.js. Time cross-checked against TimeAPI.io, Binance's clock-sync endpoint, and a
+        WorldTimeAPI-compatible HTTP time service (time.now) — see the Time Sources panel for live tech
+        details on each. Sunrise, sunset, and moon phase are computed locally from standard solar/lunar
+        position formulas.
       </footer>
     </div>
   )

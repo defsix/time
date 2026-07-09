@@ -38,6 +38,49 @@ panel are the same React/Three.js code that runs on the live site.
   `window.webkit.messageHandlers`, which resolves them via CoreLocation and
   calls back into the page. This is what powers the nearest-city default on
   load.
+- **Status-bar-aware view controller.** [`WebViewContainer.swift`](WorldTime/WebView/WebViewContainer.swift)
+  is a `UIViewControllerRepresentable` (not the simpler `UIViewRepresentable`)
+  wrapping [`WebViewController.swift`](WorldTime/WebView/WebViewController.swift),
+  so `NativeBridge` can drive `preferredStatusBarStyle` at runtime to match
+  the web app's own theme — see below.
+
+## City alarms & Nightstand mode
+
+Both features from the [Android app](../android/README.md#city-alarms) are
+implemented here too, sharing the same web-side code
+(`src/lib/nativeBridge.ts`, `src/components/CityAlarms.tsx`,
+`src/components/NightstandMode.tsx`) via
+[`NativeBridge.swift`](WorldTime/WebView/NativeBridge.swift) and
+[`native-bridge-shim.js`](WorldTime/WebView/native-bridge-shim.js):
+
+- **The bridge is async, not synchronous.** Android's `WebView.addJavascriptInterface`
+  methods can return a value directly; `WKWebView` has no such mechanism —
+  every native call is a `postMessage` tagged with a request id, resolved
+  or rejected later via `window.__worldTimeBridgeResolve`/`Reject` once
+  `NativeBridge.swift` calls back with `evaluateJavaScript`.
+  `nativeBridge.ts` wraps both shapes behind one Promise-based API so the
+  UI components don't need to know which platform they're on.
+- **Alarms are local notifications, not "AlarmManager".** iOS has no
+  scheduled-exact-alarm API for third-party apps; a one-shot
+  `UNTimeIntervalNotificationTrigger` fires at an absolute instant instead,
+  computed the same way as Android (`src/lib/alarmTime.ts` converts the
+  target city's wall-clock time to a UTC epoch before calling in, so the
+  trigger interval is just `epoch - now` regardless of time zone). There's
+  no Android-style "exact alarm" special-access permission to request on
+  iOS — `hasExactAlarmPermission()` always resolves `true` there.
+  `NativeBridge` opts in to foreground presentation
+  (`UNUserNotificationCenterDelegate.willPresent`) so an alarm that fires
+  while the app is already open still shows instead of being silently
+  dropped, and persists the pending-alarms list in `UserDefaults` purely so
+  `listAlarms()` can enumerate it (the notifications themselves are
+  scheduled and fired by the OS, so unlike Android there's no
+  `BootReceiver`-equivalent needed for reboot survival).
+- **Keep-awake** uses `UIApplication.shared.isIdleTimerDisabled`, mirroring
+  Android's `FLAG_KEEP_SCREEN_ON`.
+- **Status bar appearance** is set via `WebViewController.setStatusBarAppearance`,
+  called from `NativeBridge` the same way `App.tsx` already calls Android's
+  equivalent — both platforms react to the web app's own theme/Nightstand
+  state, not just the device's system dark/light mode.
 
 ## Building
 
@@ -83,11 +126,22 @@ and extend `ios-build.yml` to import them and build/export with
 
 This was developed in a sandboxed Linux environment with no Xcode, no iOS
 Simulator, and no Swift toolchain at all, so none of this — not the project
-generation, not the Swift code, not the custom scheme handler or geolocation
-bridge — could be compiled or run here. The web app build (`npm run
-build:ios`) was verified directly, and the Swift code follows well-documented
-`WKURLSchemeHandler` / `WKScriptMessageHandler` patterns, but please treat the
-first `xcodegen generate` + build in Xcode as the real first test, and expect
-to iron out a few rough edges (in particular, the CORS behavior of the
-time-sync APIs under a custom scheme origin — see above — is a reasoned bet,
-not something verified against the real APIs here).
+generation, not the Swift code, not the custom scheme handler, geolocation
+bridge, city alarms, or Nightstand mode — could be compiled or run here. The
+web app build (`npm run build:ios`) was verified directly, and the Swift code
+follows well-documented `WKURLSchemeHandler` / `WKScriptMessageHandler` /
+`UNUserNotificationCenter` patterns, but please treat the first
+`xcodegen generate` + build in Xcode as the real first test, and expect to
+iron out a few rough edges. In particular:
+
+- The CORS behavior of the time-sync APIs under a custom scheme origin (see
+  above) is a reasoned bet, not something verified against the real APIs here.
+- `UIViewControllerRepresentable`'s `preferredStatusBarStyle` propagation
+  through SwiftUI's `WindowGroup` hosting hierarchy is a well-documented
+  pattern, but hasn't been visually confirmed switching themes on-device.
+- The alarm-scheduling math (`UNTimeIntervalNotificationTrigger` computed
+  from an epoch) and the foreground-presentation opt-in
+  (`willPresent` → `.banner, .sound, .list`) follow Apple's documented
+  `UserNotifications` APIs, but treat the first real alarm you set and let
+  ring as the actual first test of that logic — the same caveat the Android
+  app's alarm code carries.

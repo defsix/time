@@ -9,7 +9,7 @@ import {
   requestExactAlarmPermission,
   requestNotificationPermission,
   scheduleCityAlarm,
-} from '../lib/androidBridge'
+} from '../lib/nativeBridge'
 
 interface CityAlarmsProps {
   /** IANA time zone the alarm's picked HH:MM is interpreted in. */
@@ -40,10 +40,15 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({})
   const buttonRef = useRef<HTMLButtonElement>(null)
 
-  function refresh() {
-    setAlarms(listCityAlarms())
-    setNeedsNotificationPermission(!hasNotificationPermission())
-    setNeedsExactAlarmPermission(!hasExactAlarmPermission())
+  async function refresh() {
+    const [alarmsList, hasNotif, hasExact] = await Promise.all([
+      listCityAlarms(),
+      hasNotificationPermission(),
+      hasExactAlarmPermission(),
+    ])
+    setAlarms(alarmsList)
+    setNeedsNotificationPermission(!hasNotif)
+    setNeedsExactAlarmPermission(!hasExact)
   }
 
   // The panel is positioned in fixed (viewport) coordinates, clamped to stay
@@ -81,7 +86,7 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
 
   async function handleSetAlarm() {
     setStatus(null)
-    if (!hasNotificationPermission()) {
+    if (!(await hasNotificationPermission())) {
       const granted = await requestNotificationPermission()
       if (!granted) {
         setStatus('Notifications permission is required to ring an alarm.')
@@ -96,7 +101,7 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
     const epoch = nextOccurrenceEpoch(targetTz, hour, minute)
     const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-    const result = scheduleCityAlarm(id, targetLabel, epoch, targetLabel)
+    const result = await scheduleCityAlarm(id, targetLabel, epoch, targetLabel)
     if (result === 'ok') {
       setStatus(`Alarm set for ${formatAlarmTime(epoch, targetTz)}.`)
     } else if (result === 'ok_inexact') {
@@ -107,8 +112,8 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
     refresh()
   }
 
-  function handleCancel(id: string) {
-    cancelCityAlarm(id)
+  async function handleCancel(id: string) {
+    await cancelCityAlarm(id)
     refresh()
   }
 

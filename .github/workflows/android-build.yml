@@ -71,3 +71,31 @@ jobs:
           prerelease: true
           make_latest: false
           files: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Play Store submissions need a signed .aab, not a debug .apk. The four
+      # secrets below are optional: without them, the release build type
+      # falls back to debug signing (see app/build.gradle.kts), so the
+      # bundle still builds to smoke-test the R8-minified shape but isn't
+      # upload-able to Play — set them (see android/README.md) once a real
+      # release keystore exists. Decoding + exporting ANDROID_KEYSTORE_PATH
+      # only when the secret is actually set is done in plain bash rather
+      # than a step `if:`/env expression, to keep this workflow simple.
+      - name: Build release AAB
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > app/release.jks
+            export ANDROID_KEYSTORE_PATH="release.jks"
+          fi
+          ./gradlew bundleRelease --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: world-time-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
