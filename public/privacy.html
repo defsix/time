@@ -20,27 +20,38 @@
 <p>Last updated: 2026-07-09</p>
 
 <p>
-  World Time (the website at <a href="https://defsix.github.io/time/">defsix.github.io/time</a>,
-  and the Android and iOS apps that wrap it) does not collect, store, transmit,
-  or sell any personal data. There is no account system, no analytics, no
-  advertising SDK, and no server component of any kind — the app is a static
-  site plus a thin native shell around it.
+  <strong>Summary: no logs, no storage, no accounts, no analytics, no
+  tracking, no ads, nothing sold or shared.</strong> World Time (the website
+  at <a href="https://defsix.github.io/time/">defsix.github.io/time</a>, and
+  the Android and iOS apps that wrap it) has no server component of any kind
+  — it's a static site plus a thin native shell around it — so there's
+  nowhere for your data to be logged even if the app wanted to. The only
+  data ever kept is the bare minimum a feature needs to work, kept only on
+  your own device, described exactly below.
 </p>
 
-<h2>Location</h2>
+<h2>Why location is requested</h2>
 <p>
-  If you grant location permission, your device's coordinates are used once,
-  on launch, entirely on-device, to fly the globe to your nearest known city
-  and show its local time. Your location is never transmitted anywhere,
-  logged, or stored — the app doesn't have anywhere to send it to.
+  The app asks for location permission for exactly one reason: to find your
+  nearest known city and fly the globe there on launch, so you see a
+  relevant time zone immediately instead of a blank globe. That's the whole
+  reason — there's no other feature that uses it.
+</p>
+<p>
+  Your coordinates are read once per launch, used entirely on-device to pick
+  the nearest city from a bundled list, and then discarded. Nothing about
+  your location is written to disk, logged, or transmitted anywhere — again,
+  there's no server to send it to. Denying the permission just means the app
+  falls back to your browser/device's time zone setting instead.
 </p>
 
 <h2>Alarms &amp; notifications</h2>
 <p>
   If you set a city alarm (Android and iOS apps only), the alarm's time and
-  label are stored locally on your device (Android SharedPreferences / iOS
-  UserDefaults) purely so the app can list and cancel it later, and to
-  reschedule it after a reboot. This data never leaves your device.
+  a label you chose (e.g. a city name) are kept locally on your device
+  (Android SharedPreferences / iOS UserDefaults) — the bare minimum needed
+  so the app can list, cancel, and reschedule it after a reboot. Nothing
+  about an alarm is logged or leaves your device.
 </p>
 
 <h2>Time synchronization</h2>
