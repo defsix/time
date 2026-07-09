@@ -159,6 +159,7 @@ export default function App() {
             onSelectCity={(city) => selectCity(city, false)}
             onSelectPoint={(lat, lon) => setSelection({ kind: 'point', lat, lon })}
             selectedCityName={selection?.kind === 'city' ? selection.city.name : null}
+            selectedPoint={selection?.kind === 'point' ? { lat: selection.lat, lon: selection.lon } : null}
             userLocation={userLocation}
             flyToRequest={flyToRequest}
           />

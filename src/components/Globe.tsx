@@ -20,6 +20,8 @@ interface GlobeProps {
   onSelectCity: (city: City) => void
   onSelectPoint: (lat: number, lon: number) => void
   selectedCityName: string | null
+  /** Shows the highlight marker here on mount, e.g. restoring a non-city point selection from a shared link. */
+  selectedPoint?: { lat: number; lon: number } | null
   userLocation: { lat: number; lon: number } | null
   flyToRequest: FlyToRequest | null
   /** Skips the idle-triggered auto-spin and just always rotates, e.g. for Nightstand mode. */
@@ -59,6 +61,7 @@ export default function Globe({
   onSelectCity,
   onSelectPoint,
   selectedCityName,
+  selectedPoint = null,
   userLocation,
   flyToRequest,
   forceAutoRotate = false,
@@ -298,6 +301,17 @@ export default function Globe({
     highlightMarker.visible = false
     scene.add(highlightMarker)
 
+    // Restore the highlight for a non-city point selection (e.g. a shared
+    // link), the same way flyToRequest below handles a restored city one —
+    // just shown in place rather than flown to, since there's no name/city
+    // to fly toward.
+    if (selectedPoint) {
+      const pos = latLonToVector3(selectedPoint.lat, selectedPoint.lon, RADIUS * 1.01)
+      highlightMarker.position.copy(pos)
+      highlightMarker.visible = true
+      showLabelAt(pos, `${selectedPoint.lat.toFixed(2)}°, ${selectedPoint.lon.toFixed(2)}°`)
+    }
+
     // User location marker (distinct color)
     let userMarker: THREE.Mesh | null = null
     if (userLocation) {
@@ -400,8 +414,10 @@ export default function Globe({
       if (sphereHits.length > 0) {
         const { lat, lon } = vector3ToLatLon(sphereHits[0].point, RADIUS)
         onSelectPoint(lat, lon)
-        highlightMarker.visible = false
-        hideLabel()
+        const pos = latLonToVector3(lat, lon, RADIUS * 1.01)
+        highlightMarker.position.copy(pos)
+        highlightMarker.visible = true
+        showLabelAt(pos, `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`)
       }
     }
 

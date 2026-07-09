@@ -88,6 +88,10 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ## Changelog
 
+### 2026-07-09
+
+- Tapping a point on the globe with no known city now shows the same cyan highlight marker and a coordinate label as selecting a city does, instead of no visual indicator at all — also restored correctly when reopening a shared link that points at a raw coordinate rather than a city
+
 ### 2026-07-08
 
 - Fixed the Android app showing a white bar at the top in dark theme / Nightstand mode — status bar color previously only tracked the *device's* system dark/light mode, not the web app's own theme; the app is now edge-to-edge with the status bar icon color set dynamically to match what's actually on screen
