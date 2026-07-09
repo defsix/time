@@ -10,7 +10,7 @@ import PinnedCitiesStrip from './components/PinnedCitiesStrip'
 import SolarLunarCard from './components/SolarLunarCard'
 import CityAlarms from './components/CityAlarms'
 import NightstandMode from './components/NightstandMode'
-import { isAndroidAlarmBridgeAvailable, setStatusBarAppearance } from './lib/androidBridge'
+import { isAlarmBridgeAvailable, setStatusBarAppearance } from './lib/nativeBridge'
 import { useTimeSources } from './lib/useTimeSources'
 import { useTheme } from './lib/useTheme'
 import { useHourFormat } from './lib/useHourFormat'
@@ -179,7 +179,7 @@ export default function App() {
             accent="user"
             hour12={hour12}
             headerExtra={
-              isAndroidAlarmBridgeAvailable() ? <CityAlarms targetTz={userTimeZone} targetLabel="Your Location" /> : undefined
+              isAlarmBridgeAvailable() ? <CityAlarms targetTz={userTimeZone} targetLabel="Your Location" /> : undefined
             }
           />
 
@@ -206,7 +206,7 @@ export default function App() {
                       {isPinned(selection.city) ? 'Pinned' : 'Pin'}
                     </button>
                   )}
-                  {selection.kind === 'city' && isAndroidAlarmBridgeAvailable() && (
+                  {selection.kind === 'city' && isAlarmBridgeAvailable() && (
                     <CityAlarms
                       targetTz={selection.city.tz}
                       targetLabel={`${selection.city.name}, ${selection.city.country}`}

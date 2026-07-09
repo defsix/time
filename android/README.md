@@ -31,8 +31,11 @@ time *there* — e.g. "ring when it's 7:00 AM in Tokyo" while you're in New
 York. It's available on both the "Your Location" card (using your own
 timezone) and the selected-city card (using that city's timezone) — the
 component takes a plain `targetTz`/`targetLabel` pair, not a `City`, so it
-works either way. This only appears in the Android app (feature-detected via
-`window.AndroidAlarmBridge`, absent on the plain website and in the iOS app).
+works either way. This only appears in the mobile apps (feature-detected via
+`isAlarmBridgeAvailable()`, absent on the plain website) — both Android and
+iOS now implement it, backed by different native scheduling primitives (see
+[`../ios/README.md`](../ios/README.md#city-alarms--nightstand-mode) for iOS's
+`UNUserNotificationCenter`-based implementation).
 
 The popover positions itself relative to the toggle button's actual
 on-screen position (measured via `getBoundingClientRect`, clamped to stay
@@ -44,8 +47,12 @@ of narrow screens.
 - `src/lib/alarmTime.ts` converts "HH:MM in an IANA zone" to the next future
   UTC instant using only `Intl.DateTimeFormat` (no timezone database
   dependency), correctly handling DST.
-- `src/lib/androidBridge.ts` / `src/components/CityAlarms.tsx` are the web
+- `src/lib/nativeBridge.ts` / `src/components/CityAlarms.tsx` are the web
   side: a time picker, a list of pending alarms, and permission nudges.
+  `nativeBridge.ts` is shared with the iOS app too — every call is
+  Promise-based so it works the same whether the underlying bridge is
+  Android's synchronous `addJavascriptInterface` or iOS's async
+  `WKScriptMessageHandler` round-trip (see [`../ios/README.md`](../ios/README.md#city-alarms--nightstand-mode)).
 - On the native side (`android/app/.../alarm/`):
   - `AlarmBridge.kt` is the `@JavascriptInterface` the web app calls.
   - `AlarmScheduler.kt` uses `AlarmManager.setAlarmClock()` (the same
@@ -110,6 +117,34 @@ Instead:
   iOS (with `viewport-fit=cover` now set) and the plain website both get
   sensible values for free.
 
+## Play Store release signing
+
+The `release` build type is R8-minified (`isMinifyEnabled = true`); the two
+`@JavascriptInterface` classes the web app calls into (`AlarmBridge`,
+`DisplayBridge`) are kept via `proguard-rules.pro` — R8 has no way to know
+WebView will call them reflectively, so without that rule a minified build
+would silently break every native bridge call with no compile error.
+
+Signing is optional and never committed:
+
+- **Locally:** generate a keystore (`keytool -genkeypair -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias world-time-release`),
+  copy [`keystore.properties.example`](keystore.properties.example) to
+  `keystore.properties` (gitignored) and fill in the real paths/passwords,
+  then `./gradlew bundleRelease` produces a signed `.aab` ready to upload to
+  the Play Console.
+- **In CI:** [`android-build.yml`](../.github/workflows/android-build.yml) also
+  builds `bundleRelease` on every push/PR. Set these repo secrets once a real
+  release keystore exists — `ANDROID_KEYSTORE_BASE64` (`base64 -w0 release.jks`),
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` —
+  and the workflow decodes and signs with it automatically.
+- **Without either:** the release build type falls back to debug signing, so
+  `assembleRelease`/`bundleRelease` still succeed (useful for smoke-testing
+  the minified build shape) — just not upload-able to Play as-is.
+
+A [privacy policy](../public/privacy.html) is also published at
+`https://defsix.github.io/time/privacy.html` — the Play Console requires one
+for apps requesting location/notification permissions.
+
 ## Building
 
 Prerequisites: Android Studio (or the command-line SDK) and Node.js — Node is
@@ -150,3 +185,8 @@ APIs), which was cross-checked against Android's documentation but not
 compiled or run on a device. CI (`android-build.yml`) at least confirms it
 compiles; please treat your first real device test of setting and letting an
 alarm ring as the actual first test of that logic.
+
+The R8-minified release build type (and its ProGuard keep rules for the
+JS-interface classes) is likewise unverified beyond CI compiling it — treat
+the first real install of a `bundleRelease` output as the first real test
+that the native bridges still work under minification.

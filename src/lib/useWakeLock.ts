@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { setKeepScreenOn } from './androidBridge'
+import { setKeepScreenOn } from './nativeBridge'
 
 /**
  * Keeps the screen on while `active` is true, via the standard Web Wake

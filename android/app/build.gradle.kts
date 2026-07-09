@@ -1,9 +1,29 @@
 import org.gradle.api.tasks.Exec
+import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Release signing is optional and never committed: populate
+// android/keystore.properties (gitignored, see keystore.properties.example)
+// for local release builds, or set the ANDROID_KEYSTORE_* env vars (as CI
+// does, decoding a base64 secret to a temp file) for CI ones. Without
+// either, the release build type falls back to debug signing further down
+// so `assembleRelease`/`bundleRelease` still work for smoke-testing the
+// R8-minified build shape — just not for actual distribution.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) load(FileInputStream(keystorePropertiesFile))
+}
+
+fun releaseSigningValue(propertyKey: String, envVar: String): String? =
+    System.getenv(envVar) ?: keystoreProperties.getProperty(propertyKey)
+
+val releaseStoreFile = releaseSigningValue("storeFile", "ANDROID_KEYSTORE_PATH")
+val hasReleaseSigning = releaseStoreFile != null
 
 // The Android app has no UI of its own for the globe/clock/etc: it ships the
 // existing React/Three.js web app (../.. from here) as its assets and shows it
@@ -51,10 +71,22 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseSigningValue("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = releaseSigningValue("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword = releaseSigningValue("keyPassword", "ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 
