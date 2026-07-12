@@ -1,6 +1,5 @@
 package io.defsix.time
 
-import android.view.Window
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import androidx.core.view.WindowCompat
@@ -12,30 +11,23 @@ import androidx.core.view.WindowCompat
  * the app is edge-to-edge (see MainActivity.enableEdgeToEdge), so the status
  * bar has no background of its own to guarantee contrast the way a device's
  * system dark/light mode alone otherwise would.
- *
- * Takes a Window + a "run this on the UI thread" callback rather than an
- * Activity directly so it can be shared between MainActivity and
- * WorldTimeDreamService (a Service, not an Activity, but still has a Window).
  */
-class DisplayBridge(
-    private val window: Window,
-    private val runOnUi: (() -> Unit) -> Unit,
-) {
+class DisplayBridge(private val activity: MainActivity) {
     @JavascriptInterface
     fun setKeepScreenOn(on: Boolean) {
-        runOnUi {
+        activity.runOnUiThread {
             if (on) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             } else {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         }
     }
 
     @JavascriptInterface
     fun setStatusBarAppearance(isLightBackground: Boolean) {
-        runOnUi {
-            WindowCompat.getInsetsController(window, window.decorView)
+        activity.runOnUiThread {
+            WindowCompat.getInsetsController(activity.window, activity.window.decorView)
                 .isAppearanceLightStatusBars = isLightBackground
         }
     }

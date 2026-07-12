@@ -54,21 +54,5 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-
-        <!-- System Daydream / screensaver, listed under Settings > Display >
-             Screen saver. android:permission restricts binding to the OS
-             itself, as required for all DreamServices. -->
-        <service
-            android:name=".WorldTimeDreamService"
-            android:exported="true"
-            android:permission="android.permission.BIND_DREAM_SERVICE">
-            <intent-filter>
-                <action android:name="android.service.dreams.DreamService" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            <meta-data
-                android:name="android.service.dream"
-                android:resource="@xml/dream_info" />
-        </service>
     </application>
 </manifest>
