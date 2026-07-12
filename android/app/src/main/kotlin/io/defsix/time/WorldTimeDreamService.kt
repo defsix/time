@@ -89,7 +89,11 @@ class WorldTimeDreamService : DreamService() {
         settings.domStorageEnabled = true
         settings.databaseEnabled = true
         settings.mediaPlaybackRequiresUserGesture = false
-        settings.cacheMode = WebSettings.LOAD_DEFAULT
+        // See MainActivity.configureWebView for why: locally-bundled assets
+        // read from the APK, not a real network fetch, so there's no cost to
+        // skipping the HTTP cache — and it avoids ever serving a stale
+        // cached index.html referencing JS files an app update no longer ships.
+        settings.cacheMode = WebSettings.LOAD_NO_CACHE
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(

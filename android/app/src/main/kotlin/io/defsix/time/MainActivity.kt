@@ -103,7 +103,14 @@ class MainActivity : AppCompatActivity() {
         settings.databaseEnabled = true
         settings.mediaPlaybackRequiresUserGesture = false
         settings.setGeolocationEnabled(true)
-        settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+        // These assets are served from AssetsPathHandler (i.e. straight out of
+        // the APK, not a real network fetch), so there's no latency cost to
+        // skipping the HTTP cache — and every build gives its JS/CSS new
+        // content-hashed filenames, so caching the *page* across an in-place
+        // app update (`adb install -r`) risks serving a stale cached
+        // index.html that references JS files the new APK no longer ships,
+        // which loads nothing and leaves a blank white WebView.
+        settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(
