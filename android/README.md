@@ -91,34 +91,6 @@ Keeping the screen on uses the standard Web Wake Lock API
 `FLAG_KEEP_SCREEN_ON` fallback via `window.AndroidDisplayBridge`
 (`DisplayBridge.kt`) in case a WebView's Wake Lock support is unreliable.
 
-## Daydream / screen saver
-
-`WorldTimeDreamService.kt` registers a system
-[Daydream](https://developer.android.com/reference/android/service/dreams/DreamService)
-(Settings → Display → Screen saver), hosting the same globe in a fresh
-`WebView` — useful for a phone docked/charging on a nightstand, without
-needing the app itself open. The OS decides when to start/stop it (idling
-while charging/docked, or "Start now"/"Preview" in Settings), not the app.
-
-- `isInteractive = true` and a `GestureDetector` that only intercepts a
-  **double tap** (to `finish()` the dream) — a single tap or drag passes
-  through untouched so rotating the globe doesn't accidentally exit.
-- Deliberately doesn't wire up `AlarmBridge` or geolocation prompts: this is
-  a passive ambient display, not a place to schedule alarms or pop a
-  permission dialog from.
-- `DisplayBridge` (see below) takes a `Window` + a "run on UI thread"
-  callback rather than an `Activity` directly, so the same class backs both
-  `MainActivity` and this service (a `Service`, which has no `Activity` to
-  hand it, but does have its own `Window`).
-- `res/xml/dream_info.xml` points `android:settingsActivity` at
-  `MainActivity`, so "Preview" in Settings opens the app.
-
-Not addressed: no `android:previewImage` in `dream_info.xml` (Settings shows
-a generic/live preview instead of a custom static thumbnail), and OEM-specific
-Daydream handling (some device skins route "Always On Display" settings
-through their own vendor UI instead of the stock Daydream picker) hasn't been
-tested against real hardware variants.
-
 ## Status bar / edge-to-edge
 
 `MainActivity` calls `enableEdgeToEdge()` and draws the WebView under the

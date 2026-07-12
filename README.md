@@ -91,8 +91,8 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-12
 
-- Added a Daydream/screen saver to the Android app (Settings → Display → Screen saver), hosting the same globe in a `WebView` for a phone docked or charging on a nightstand — double-tap to exit, single taps/drags rotate the globe normally
-- Generalized `DisplayBridge` to take a `Window` + UI-thread callback instead of an `Activity`, so it can be shared between `MainActivity` and the new Daydream service
+- Reverted the Daydream/screen saver feature added earlier today — after installing it, the Android app started showing a blank white screen on every launch (not specific to using the screensaver itself, and not fixed by clearing app storage). Rolled back to isolate whether the regression was actually in that change or in the prior (2026-07-09) release, before rebuilding the feature more carefully.
+- Set the Android WebView's cache mode to `LOAD_NO_CACHE` for the bundled app assets — they're read straight out of the APK, not fetched over a real network, so there's no cost to skipping the HTTP cache, and it removes one possible way a stale cached page could survive an in-place app update.
 
 ### 2026-07-09
 
