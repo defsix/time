@@ -89,6 +89,11 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ## Changelog
 
+### 2026-07-12
+
+- Added a Daydream/screen saver to the Android app (Settings → Display → Screen saver), hosting the same globe in a `WebView` for a phone docked or charging on a nightstand — double-tap to exit, single taps/drags rotate the globe normally
+- Generalized `DisplayBridge` to take a `Window` + UI-thread callback instead of an `Activity`, so it can be shared between `MainActivity` and the new Daydream service
+
 ### 2026-07-09
 
 - Brought the iOS app to feature parity with Android: city alarms (backed by local notifications instead of `AlarmManager`, since iOS has no third-party-accessible exact-alarm scheduling API) and Nightstand mode (keep-awake via `UIApplication.isIdleTimerDisabled`, status bar icon color matching the web app's own theme via a new status-bar-aware view controller)
