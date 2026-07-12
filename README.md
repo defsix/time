@@ -91,6 +91,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-12
 
+- Re-added the Android Daydream/screen saver, fixed: reverting it earlier today (see below) isolated the white-screen regression to this feature specifically, and it turned out to be a missing background — a `Service`'s `Window` has no Activity theme to inherit a `windowBackground` from, so the OS auto-starting the dream (e.g. while charging) showed a plain white window until the WebView had anything painted. Both the root layout and the `WebView` now get an explicit black background, confirmed against Android's own Daydream sample code.
 - Reverted the Daydream/screen saver feature added earlier today — after installing it, the Android app started showing a blank white screen on every launch (not specific to using the screensaver itself, and not fixed by clearing app storage). Rolled back to isolate whether the regression was actually in that change or in the prior (2026-07-09) release, before rebuilding the feature more carefully.
 - Set the Android WebView's cache mode to `LOAD_NO_CACHE` for the bundled app assets — they're read straight out of the APK, not fetched over a real network, so there's no cost to skipping the HTTP cache, and it removes one possible way a stale cached page could survive an in-place app update.
 

@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.addJavascriptInterface(AlarmBridge(this, webView), "AndroidAlarmBridge")
-        webView.addJavascriptInterface(DisplayBridge(this), "AndroidDisplayBridge")
+        webView.addJavascriptInterface(DisplayBridge(window, ::runOnUiThread), "AndroidDisplayBridge")
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(
