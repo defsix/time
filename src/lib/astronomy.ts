@@ -4,7 +4,11 @@
 // and https://aa.quae.nl/en/reken/zonpositie.html), accurate to roughly a
 // minute. Moon phase uses a fixed-synodic-month approximation referenced to a
 // known new moon, accurate to within a few hours — plenty for a phase name
-// and illumination percentage.
+// and illumination percentage. subSolarPoint/subLunarPoint (further down)
+// compute where each body is actually overhead right now — real right
+// ascension/declination via Meeus' low-precision lunar series for the moon,
+// converted to a ground point via Greenwich Mean Sidereal Time — for the
+// globe's day/night terminator and its sun/moon position markers.
 
 const RAD = Math.PI / 180
 const DAY_MS = 86400000
@@ -125,6 +129,99 @@ export function getMoonPhase(date: Date): MoonPhase {
 // "lune" construction: one boundary is a fixed half-circle (right side while
 // waxing toward full, left side while waning back toward new), the other is
 // a terminator ellipse whose horizontal radius/sweep tracks the phase.
+function mod360(deg: number): number {
+  return ((deg % 360) + 360) % 360
+}
+
+// Converts ecliptic coordinates (radians) to equatorial right
+// ascension/declination (radians) using Earth's axial tilt.
+function eclipticToEquatorial(lambda: number, beta: number): { ra: number; dec: number } {
+  const dec = Math.asin(Math.sin(beta) * Math.cos(OBLIQUITY) + Math.cos(beta) * Math.sin(OBLIQUITY) * Math.sin(lambda))
+  const ra = Math.atan2(
+    Math.sin(lambda) * Math.cos(OBLIQUITY) - Math.tan(beta) * Math.sin(OBLIQUITY),
+    Math.cos(lambda),
+  )
+  return { ra, dec }
+}
+
+// Greenwich Mean Sidereal Time (radians), standard IAU 1982 polynomial.
+function greenwichMeanSiderealTime(date: Date): number {
+  const d = toDays(date)
+  const T = d / 36525
+  const gmstDeg = mod360(280.46061837 + 360.98564736629 * d + 0.000387933 * T * T - (T * T * T) / 38710000)
+  return RAD * gmstDeg
+}
+
+// The point on Earth directly beneath a body at the given right
+// ascension/declination right now (i.e. where it's at its zenith) — the
+// same "sub-point" concept the day/night terminator already used for the
+// sun (subSolarPoint below), generalized so the moon can share it too.
+function subPointFromEquatorial(ra: number, dec: number, date: Date): { lat: number; lon: number } {
+  const gmst = greenwichMeanSiderealTime(date)
+  const lonDeg = (((ra - gmst) / RAD + 180) % 360 + 360) % 360 - 180
+  return { lat: dec / RAD, lon: lonDeg }
+}
+
+/** Where the sun is directly overhead right now — powers the day/night terminator and the sun marker on the globe. */
+export function subSolarPoint(date: Date): { lat: number; lon: number } {
+  const d = toDays(date)
+  const M = solarMeanAnomaly(d)
+  const L = eclipticLongitude(M)
+  const { ra, dec } = eclipticToEquatorial(L, 0)
+  return subPointFromEquatorial(ra, dec, date)
+}
+
+// Meeus' low-precision lunar position (Astronomical Algorithms, ch. 47) —
+// accurate to roughly 10' in ecliptic longitude and 4' in latitude, plenty
+// for a visual marker position (not eclipse-prediction grade).
+function moonEclipticPosition(date: Date): { lambda: number; beta: number } {
+  const T = toDays(date) / 36525
+
+  const Lp = RAD * mod360(218.3164477 + 481267.88123421 * T)
+  const D = RAD * mod360(297.8501921 + 445267.1114034 * T)
+  const M = RAD * mod360(357.5291092 + 35999.0502909 * T)
+  const Mp = RAD * mod360(134.9633964 + 477198.8675055 * T)
+  const F = RAD * mod360(93.272095 + 483202.0175233 * T)
+
+  const lambda =
+    Lp +
+    RAD *
+      (6.289 * Math.sin(Mp) -
+        1.274 * Math.sin(Mp - 2 * D) +
+        0.658 * Math.sin(2 * D) -
+        0.186 * Math.sin(M) -
+        0.059 * Math.sin(2 * Mp - 2 * D) -
+        0.057 * Math.sin(Mp - 2 * D + M) +
+        0.053 * Math.sin(Mp + 2 * D) +
+        0.046 * Math.sin(2 * D - M) +
+        0.041 * Math.sin(Mp - M) -
+        0.035 * Math.sin(D) -
+        0.031 * Math.sin(Mp + M) -
+        0.015 * Math.sin(2 * F - 2 * D) +
+        0.011 * Math.sin(Mp - 4 * D))
+
+  const beta =
+    RAD *
+    (5.128 * Math.sin(F) +
+      0.281 * Math.sin(Mp + F) -
+      0.278 * Math.sin(F - Mp) -
+      0.173 * Math.sin(2 * D - F) +
+      0.055 * Math.sin(2 * D - Mp + F) +
+      0.046 * Math.sin(2 * D - Mp - F) +
+      0.033 * Math.sin(2 * D + F) +
+      0.017 * Math.sin(2 * Mp + F) +
+      0.011 * Math.sin(2 * D - 2 * Mp - F))
+
+  return { lambda, beta }
+}
+
+/** Where the moon is directly overhead right now — powers the moon marker on the globe. */
+export function subLunarPoint(date: Date): { lat: number; lon: number } {
+  const { lambda, beta } = moonEclipticPosition(date)
+  const { ra, dec } = eclipticToEquatorial(lambda, beta)
+  return subPointFromEquatorial(ra, dec, date)
+}
+
 export function moonPhasePathD(phase: number, r: number): string {
   const cx = r
   const cy = r

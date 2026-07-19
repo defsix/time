@@ -9,6 +9,7 @@ A live world clock with a wireframe 3D globe — click any city to see its time,
 ## What it does
 
 - **Wireframe globe.** A Three.js globe with a lat/lon graticule, country border outlines, and a real day/night terminator computed from the actual subsolar point — no glow-band fudging, just a clean sharp line that tracks the real sun as the globe rotates.
+- **Live sun & moon markers.** Small markers orbiting the globe show where the sun and moon are actually overhead right now, each trailed by a thin ring tracing the path it sweeps as the day (or lunar day) progresses — real right ascension/declination math (a Meeus low-precision lunar position series for the moon), not just a decorative motif.
 - **~250 clickable cities**, plus a search box covering roughly 7,300 more. Click or tap near a marker (a generous invisible hit area makes this easy on touchscreens) to fly the camera there and see its local time.
 - **Nearest-city default.** On load, if you allow location access, the app finds and flies to your nearest known city automatically.
 - **Pin cities** to a small live-ticking compare strip, so you can keep an eye on several time zones at once. Pins persist across reloads.
@@ -96,6 +97,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-19
 
+- Added live sun and moon markers orbiting the globe, each with a thin ring tracing its current path — real position math (right ascension/declination via Greenwich Mean Sidereal Time, with a Meeus low-precision lunar position series for the moon), not a decorative approximation. Also upgraded the day/night terminator's own subsolar-point calculation to the same rigor (previously a cruder day-of-year approximation), correcting it by the equation of time.
 - Bumped to `versionCode 2` / `versionName "1.1"`, ready for a `v1.1` tag — Android requires a strictly increasing `versionCode` for a release to install as an update over an existing one, so `v1.0` itself couldn't just be re-tagged with new content.
 - Cut the first tagged release (`v1.0`) via the signed-APK release workflow.
 - Renamed the release APK from AGP's generic default (`app-release.apk`) to `world-time-v<versionName>.apk`, so downloads from different releases don't collide/overwrite each other in the same folder. CI now matches the release output by glob rather than a hardcoded filename.
