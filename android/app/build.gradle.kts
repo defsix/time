@@ -12,8 +12,10 @@ plugins {
 // for local release builds, or set the ANDROID_KEYSTORE_* env vars (as CI
 // does, decoding a base64 secret to a temp file) for CI ones. Without
 // either, the release build type falls back to debug signing further down
-// so `assembleRelease`/`bundleRelease` still work for smoke-testing the
-// R8-minified build shape — just not for actual distribution.
+// so `assembleRelease` still works for smoke-testing the R8-minified build
+// shape — just not for actual distribution (World Time ships via signed
+// APKs attached to GitHub Releases, not the Play Store, so there's no AAB
+// build here).
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) load(FileInputStream(keystorePropertiesFile))
