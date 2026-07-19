@@ -15,8 +15,8 @@ const AUTO_ROTATE_SPEED = 1.0 // OrbitControls unit: 60 / speed seconds per revo
 // markers stay within the default camera framing at any rotation/zoom —
 // this needs to be glanceable without requiring the user to zoom out first,
 // especially in Nightstand mode where there's no interaction to do that with.
-const SUN_ORBIT_RADIUS = RADIUS * 1.15
-const MOON_ORBIT_RADIUS = RADIUS * 1.08
+const SUN_ORBIT_RADIUS = RADIUS * 1.28
+const MOON_ORBIT_RADIUS = RADIUS * 1.18
 const ORBIT_RING_SEGMENTS = 128
 
 export interface FlyToRequest {
@@ -324,20 +324,25 @@ export default function Globe({
     // the sun) or lunar day (for the moon) progresses — the parallel of
     // latitude at that body's current declination, at the same orbit radius.
     const sunMarker = new THREE.Mesh(
-      new THREE.SphereGeometry(0.09, 20, 20),
+      new THREE.SphereGeometry(0.13, 20, 20),
       new THREE.MeshBasicMaterial({ color: 0xffe9b0 }),
     )
     const sunGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.16, 20, 20),
+      new THREE.SphereGeometry(0.22, 20, 20),
       new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.25 }),
     )
     sunMarker.add(sunGlow)
+    // Generous invisible hit area for tapping, like the city markers below.
+    const sunHitMesh = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 8), new THREE.MeshBasicMaterial({ visible: false }))
+    sunMarker.add(sunHitMesh)
     scene.add(sunMarker)
 
     const moonMarker = new THREE.Mesh(
-      new THREE.SphereGeometry(0.055, 16, 16),
+      new THREE.SphereGeometry(0.08, 16, 16),
       new THREE.MeshBasicMaterial({ color: 0xd8dee8 }),
     )
+    const moonHitMesh = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 8), new THREE.MeshBasicMaterial({ visible: false }))
+    moonMarker.add(moonHitMesh)
     scene.add(moonMarker)
 
     function makeOrbitRing(color: number) {
@@ -437,6 +442,18 @@ export default function Globe({
       pointerToNDC(ev)
       raycaster.setFromCamera(pointer, camera)
 
+      // Sun/moon aren't a real place to select (no onSelectCity/onSelectPoint,
+      // no highlight ring) — just a name label, tracking the marker's own
+      // live-updating position since showLabelAt stores it by reference.
+      if (raycaster.intersectObject(sunHitMesh).length > 0) {
+        showLabelAt(sunMarker.position, 'Sun')
+        return
+      }
+      if (raycaster.intersectObject(moonHitMesh).length > 0) {
+        showLabelAt(moonMarker.position, 'Moon')
+        return
+      }
+
       const markerHits = raycaster.intersectObjects(markerHitMeshes)
       if (markerHits.length > 0) {
         const city = markerHits[0].object.userData.city as City
@@ -462,7 +479,7 @@ export default function Globe({
     function handlePointerMove(ev: PointerEvent) {
       pointerToNDC(ev)
       raycaster.setFromCamera(pointer, camera)
-      const hits = raycaster.intersectObjects(markerHitMeshes)
+      const hits = raycaster.intersectObjects([...markerHitMeshes, sunHitMesh, moonHitMesh])
       renderer.domElement.style.cursor = hits.length > 0 ? 'pointer' : 'grab'
     }
 
