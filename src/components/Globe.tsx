@@ -4,12 +4,20 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CITIES, type City } from '../lib/cities'
 import { latLonToVector3, vector3ToLatLon, slerpUnitVectors } from '../lib/geo'
 import { buildCountryBorderGeometry } from '../lib/countryBorders'
+import { subSolarPoint, subLunarPoint } from '../lib/astronomy'
 
 const RADIUS = 2
 const FLY_DURATION_MS = 1200
 const IDLE_RETURN_HOME_MS = 10_000 // no touch for this long -> fly back to the user's own location
 const IDLE_START_ROTATE_MS = 5_000 // then this much longer with still no touch -> start the slow auto-spin
 const AUTO_ROTATE_SPEED = 1.0 // OrbitControls unit: 60 / speed seconds per revolution at 60fps -> 1 rev/min
+// Kept fairly close to the globe surface (unlike a to-scale orrery) so both
+// markers stay within the default camera framing at any rotation/zoom —
+// this needs to be glanceable without requiring the user to zoom out first,
+// especially in Nightstand mode where there's no interaction to do that with.
+const SUN_ORBIT_RADIUS = RADIUS * 1.15
+const MOON_ORBIT_RADIUS = RADIUS * 1.08
+const ORBIT_RING_SEGMENTS = 128
 
 export interface FlyToRequest {
   city: City
@@ -44,18 +52,6 @@ const COUNTRY_BORDER_OPACITY = 0.8
 const SHELL_COLOR = 0xcdeeff
 const SHELL_OPACITY = 0.09
 
-// Approximate subsolar point (where the sun is directly overhead right now),
-// used to shade a physically-motivated day/night terminator on the globe.
-// This is independent of the light/dark UI theme — it always reflects the
-// real sun regardless of which color scheme the page is in.
-function subsolarPoint(date: Date): { lat: number; lon: number } {
-  const start = Date.UTC(date.getUTCFullYear(), 0, 0)
-  const dayOfYear = Math.floor((date.getTime() - start) / 86400000)
-  const declination = -23.44 * Math.cos((2 * Math.PI / 365) * (dayOfYear + 10))
-  const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600
-  const lon = -(utcHours - 12) * 15
-  return { lat: declination, lon }
-}
 
 export default function Globe({
   onSelectCity,
@@ -321,6 +317,48 @@ export default function Globe({
       scene.add(userMarker)
     }
 
+    // Sun/moon position markers, orbiting outside the globe at whatever
+    // point each body is currently overhead (subSolarPoint/subLunarPoint),
+    // repositioned every frame in animate() below. Each has a thin ring
+    // tracing the "line of travel" its marker sweeps along as the day (for
+    // the sun) or lunar day (for the moon) progresses — the parallel of
+    // latitude at that body's current declination, at the same orbit radius.
+    const sunMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 20, 20),
+      new THREE.MeshBasicMaterial({ color: 0xffe9b0 }),
+    )
+    const sunGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(0.16, 20, 20),
+      new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.25 }),
+    )
+    sunMarker.add(sunGlow)
+    scene.add(sunMarker)
+
+    const moonMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.055, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xd8dee8 }),
+    )
+    scene.add(moonMarker)
+
+    function makeOrbitRing(color: number) {
+      const points = Array.from({ length: ORBIT_RING_SEGMENTS + 1 }, () => new THREE.Vector3())
+      const geometry = new THREE.BufferGeometry().setFromPoints(points)
+      const material = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.3 })
+      const ring = new THREE.LineLoop(geometry, material)
+      scene.add(ring)
+      return { ring, points, geometry }
+    }
+    const sunRing = makeOrbitRing(0xffd27a)
+    const moonRing = makeOrbitRing(0x8fa3c0)
+
+    function updateOrbitRing(target: ReturnType<typeof makeOrbitRing>, lat: number, radius: number) {
+      for (let i = 0; i <= ORBIT_RING_SEGMENTS; i++) {
+        const lon = (i / ORBIT_RING_SEGMENTS) * 360 - 180
+        target.points[i].copy(latLonToVector3(lat, lon, radius))
+      }
+      target.geometry.setFromPoints(target.points)
+    }
+
     scene.add(new THREE.AmbientLight(0xffffff, 0.6))
 
     // Camera fly-to: animate along the great-circle arc (not a straight lerp,
@@ -453,9 +491,16 @@ export default function Globe({
     function animate() {
       frameId = requestAnimationFrame(animate)
 
-      const sun = subsolarPoint(new Date())
+      const now = new Date()
+      const sun = subSolarPoint(now)
       const sunVec = latLonToVector3(sun.lat, sun.lon, 1)
       sunDirUniform.value.copy(sunVec)
+      sunMarker.position.copy(latLonToVector3(sun.lat, sun.lon, SUN_ORBIT_RADIUS))
+      updateOrbitRing(sunRing, sun.lat, SUN_ORBIT_RADIUS)
+
+      const moon = subLunarPoint(now)
+      moonMarker.position.copy(latLonToVector3(moon.lat, moon.lon, MOON_ORBIT_RADIUS))
+      updateOrbitRing(moonRing, moon.lat, MOON_ORBIT_RADIUS)
 
       // Pulse the highlight marker gently for visibility
       const t = performance.now() / 500
