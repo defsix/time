@@ -97,6 +97,8 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-19
 
+- Softened the day/night terminator into a graduated gradient (it was previously a very sharp line) and moved the globe's default resting camera position a little further out. Refreshed all the screenshots below to match the current app (sun/moon markers, softer terminator, updated Time Sources lineup).
+- Bumped to `versionCode 3` / `versionName "1.2"`, ready for a `v1.2` tag.
 - Added live sun and moon markers orbiting the globe, each with a thin ring tracing its current path — real position math (right ascension/declination via Greenwich Mean Sidereal Time, with a Meeus low-precision lunar position series for the moon), not a decorative approximation. Also upgraded the day/night terminator's own subsolar-point calculation to the same rigor (previously a cruder day-of-year approximation), correcting it by the equation of time.
 - Tapping the sun or moon marker now shows a name label, tracking the marker's own position as it moves. Also made both markers a little bigger and moved them a bit further out from the globe surface.
 - Bumped to `versionCode 2` / `versionName "1.1"`, ready for a `v1.1` tag — Android requires a strictly increasing `versionCode` for a release to install as an update over an existing one, so `v1.0` itself couldn't just be re-tagged with new content.
