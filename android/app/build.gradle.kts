@@ -102,6 +102,19 @@ android {
     }
 }
 
+// Renames the release APK from AGP's default app-release.apk to something
+// that actually identifies the app and version once downloaded from a
+// GitHub Release — "app-release.apk" is the same generic name every Android
+// project produces, and would silently overwrite an older release's
+// same-named download if both ended up in the same folder.
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("world-time-v${android.defaultConfig.versionName}.apk")
+        }
+    }
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
