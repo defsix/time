@@ -98,6 +98,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 ### 2026-07-19
 
 - Added live sun and moon markers orbiting the globe, each with a thin ring tracing its current path — real position math (right ascension/declination via Greenwich Mean Sidereal Time, with a Meeus low-precision lunar position series for the moon), not a decorative approximation. Also upgraded the day/night terminator's own subsolar-point calculation to the same rigor (previously a cruder day-of-year approximation), correcting it by the equation of time.
+- Tapping the sun or moon marker now shows a name label, tracking the marker's own position as it moves. Also made both markers a little bigger and moved them a bit further out from the globe surface.
 - Bumped to `versionCode 2` / `versionName "1.1"`, ready for a `v1.1` tag — Android requires a strictly increasing `versionCode` for a release to install as an update over an existing one, so `v1.0` itself couldn't just be re-tagged with new content.
 - Cut the first tagged release (`v1.0`) via the signed-APK release workflow.
 - Renamed the release APK from AGP's generic default (`app-release.apk`) to `world-time-v<versionName>.apk`, so downloads from different releases don't collide/overwrite each other in the same folder. CI now matches the release output by glob rather than a hardcoded filename.
