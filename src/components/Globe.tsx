@@ -89,7 +89,7 @@ export default function Globe({
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(45, mount.clientWidth / mount.clientHeight, 0.1, 1000)
-    camera.position.set(0, 1.2, 5.5)
+    camera.position.set(0, 1.35, 6.2)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -192,9 +192,9 @@ export default function Globe({
         varying vec3 vWorldNormal;
         void main() {
           float intensity = dot(normalize(vWorldNormal), normalize(sunDirection));
-          float dayMix = smoothstep(-0.015, 0.015, intensity);
+          float dayMix = smoothstep(-0.12, 0.12, intensity);
           vec3 base = mix(nightColor, dayColor, dayMix);
-          float line = 1.0 - smoothstep(0.0, 0.006, abs(intensity));
+          float line = 1.0 - smoothstep(0.0, 0.05, abs(intensity));
           base = mix(base, lineColor, line);
           gl_FragColor = vec4(base, 1.0);
         }
