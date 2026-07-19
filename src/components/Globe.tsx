@@ -175,7 +175,6 @@ export default function Globe({
         sunDirection: sunDirUniform,
         dayColor: { value: new THREE.Color(0x1c6f9c) },
         nightColor: { value: new THREE.Color(0x020610) },
-        lineColor: { value: new THREE.Color(0xfff2df) },
       },
       vertexShader: `
         varying vec3 vWorldNormal;
@@ -188,14 +187,11 @@ export default function Globe({
         uniform vec3 sunDirection;
         uniform vec3 dayColor;
         uniform vec3 nightColor;
-        uniform vec3 lineColor;
         varying vec3 vWorldNormal;
         void main() {
           float intensity = dot(normalize(vWorldNormal), normalize(sunDirection));
           float dayMix = smoothstep(-0.12, 0.12, intensity);
           vec3 base = mix(nightColor, dayColor, dayMix);
-          float line = 1.0 - smoothstep(0.0, 0.05, abs(intensity));
-          base = mix(base, lineColor, line);
           gl_FragColor = vec4(base, 1.0);
         }
       `,
