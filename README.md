@@ -96,6 +96,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-19
 
+- Bumped to `versionCode 2` / `versionName "1.1"`, ready for a `v1.1` tag — Android requires a strictly increasing `versionCode` for a release to install as an update over an existing one, so `v1.0` itself couldn't just be re-tagged with new content.
 - Cut the first tagged release (`v1.0`) via the signed-APK release workflow.
 - Renamed the release APK from AGP's generic default (`app-release.apk`) to `world-time-v<versionName>.apk`, so downloads from different releases don't collide/overwrite each other in the same folder. CI now matches the release output by glob rather than a hardcoded filename.
 - Pointed the [Mobile apps](#mobile-apps) section at the actual signed release (`releases/latest`) instead of only the unsigned rolling debug build.
