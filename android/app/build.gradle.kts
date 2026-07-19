@@ -102,6 +102,25 @@ android {
     }
 }
 
+// Renames the release APK from AGP's default app-release.apk to something
+// that actually identifies the app and version once downloaded from a
+// GitHub Release — "app-release.apk" is the same generic name every Android
+// project produces, and would silently overwrite an older release's
+// same-named download if both ended up in the same folder.
+//
+// VariantOutput.outputFileName is read-only (a Provider<String>); only the
+// internal VariantOutputImpl exposes the mutable Property<String> version
+// this needs, hence the cast — a known AGP Kotlin DSL wrinkle, not optional.
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.outputs.forEach { output ->
+            if (output is com.android.build.api.variant.impl.VariantOutputImpl) {
+                output.outputFileName.set("world-time-v${android.defaultConfig.versionName}.apk")
+            }
+        }
+    }
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")

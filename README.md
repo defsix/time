@@ -89,6 +89,11 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ## Changelog
 
+### 2026-07-19
+
+- Cut the first tagged release (`v1.0`) via the signed-APK release workflow.
+- Renamed the release APK from AGP's generic default (`app-release.apk`) to `world-time-v<versionName>.apk`, so downloads from different releases don't collide/overwrite each other in the same folder. CI now matches the release output by glob rather than a hardcoded filename.
+
 ### 2026-07-12
 
 - Android release builds now produce a signed `.apk` instead of a `.aab` — World Time is distributed only via GitHub Releases, not the Play Store, so the App Bundle format was dead weight. Pushing a `v*` tag now builds the signed release APK and publishes it (with a `.sha256` checksum) to a matching GitHub Release; the workflow refuses to publish a tagged release at all if the signing secrets aren't set, rather than silently shipping a debug-signed APK as "the" release.
