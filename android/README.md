@@ -117,33 +117,43 @@ Instead:
   iOS (with `viewport-fit=cover` now set) and the plain website both get
   sensible values for free.
 
-## Play Store release signing
+## Release signing & distribution
 
-The `release` build type is R8-minified (`isMinifyEnabled = true`); the two
-`@JavascriptInterface` classes the web app calls into (`AlarmBridge`,
-`DisplayBridge`) are kept via `proguard-rules.pro` — R8 has no way to know
-WebView will call them reflectively, so without that rule a minified build
-would silently break every native bridge call with no compile error.
+World Time is distributed **only via GitHub Releases** — sideload the APK
+directly, no Play Store. The `release` build type is R8-minified
+(`isMinifyEnabled = true`); the two `@JavascriptInterface` classes the web
+app calls into (`AlarmBridge`, `DisplayBridge`) are kept via
+`proguard-rules.pro` — R8 has no way to know WebView will call them
+reflectively, so without that rule a minified build would silently break
+every native bridge call with no compile error.
 
 Signing is optional and never committed:
 
 - **Locally:** generate a keystore (`keytool -genkeypair -v -keystore release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias world-time-release`),
   copy [`keystore.properties.example`](keystore.properties.example) to
   `keystore.properties` (gitignored) and fill in the real paths/passwords,
-  then `./gradlew bundleRelease` produces a signed `.aab` ready to upload to
-  the Play Console.
+  then `./gradlew assembleRelease` produces a signed `.apk`.
 - **In CI:** [`android-build.yml`](../.github/workflows/android-build.yml) also
-  builds `bundleRelease` on every push/PR. Set these repo secrets once a real
-  release keystore exists — `ANDROID_KEYSTORE_BASE64` (`base64 -w0 release.jks`),
+  builds `assembleRelease` on every push/PR. Set these repo secrets once a
+  real release keystore exists — `ANDROID_KEYSTORE_BASE64` (`base64 -w0 release.jks`),
   `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` —
   and the workflow decodes and signs with it automatically.
 - **Without either:** the release build type falls back to debug signing, so
-  `assembleRelease`/`bundleRelease` still succeed (useful for smoke-testing
-  the minified build shape) — just not upload-able to Play as-is.
+  `assembleRelease` still succeeds on ordinary branch/PR builds (useful for
+  smoke-testing the minified build shape) — **except** on a tagged release
+  push (`v*`), where a missing keystore secret fails the build instead of
+  silently publishing a debug-signed APK as "the" signed release.
+
+**Cutting a release:** bump `versionCode`/`versionName` in
+`app/build.gradle.kts` (must increase, or Android refuses to update over an
+existing install), commit, then `git tag v1.0 && git push --tags`. CI builds
+the signed APK and publishes it — plus a `.sha256` checksum — to a GitHub
+Release matching the tag. This coexists with the rolling
+`android-debug-latest` prerelease (unsigned debug build from every push to
+`main`); the tagged release is the one that shows up as "Latest".
 
 A [privacy policy](../public/privacy.html) is also published at
-`https://defsix.github.io/time/privacy.html` — the Play Console requires one
-for apps requesting location/notification permissions.
+`https://defsix.github.io/time/privacy.html`.
 
 ## Building
 
@@ -188,5 +198,5 @@ alarm ring as the actual first test of that logic.
 
 The R8-minified release build type (and its ProGuard keep rules for the
 JS-interface classes) is likewise unverified beyond CI compiling it — treat
-the first real install of a `bundleRelease` output as the first real test
+the first real install of an `assembleRelease` output as the first real test
 that the native bridges still work under minification.

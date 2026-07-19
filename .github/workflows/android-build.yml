@@ -3,6 +3,13 @@ name: Build Android APK
 on:
   push:
     branches: [main]
+    # Version tags (e.g. v1.0) trigger the signed release APK publish step
+    # below, regardless of what files a given tagged commit touches — GitHub
+    # applies `paths` to tag pushes too when both are present in the same
+    # trigger, so this only reliably fires because the documented release
+    # process (bump versionCode/versionName in app/build.gradle.kts, commit,
+    # then tag) always touches a path this filter already matches.
+    tags: ['v*']
     paths:
       - 'android/**'
       - 'src/**'
@@ -72,15 +79,15 @@ jobs:
           make_latest: false
           files: android/app/build/outputs/apk/debug/app-debug.apk
 
-      # Play Store submissions need a signed .aab, not a debug .apk. The four
-      # secrets below are optional: without them, the release build type
-      # falls back to debug signing (see app/build.gradle.kts), so the
-      # bundle still builds to smoke-test the R8-minified shape but isn't
-      # upload-able to Play — set them (see android/README.md) once a real
-      # release keystore exists. Decoding + exporting ANDROID_KEYSTORE_PATH
-      # only when the secret is actually set is done in plain bash rather
-      # than a step `if:`/env expression, to keep this workflow simple.
-      - name: Build release AAB
+      # World Time is distributed only via GitHub Releases (no Play Store),
+      # so this builds a signed .apk, not a .aab. The four secrets below are
+      # optional for ordinary branch/PR builds: without them, the release
+      # build type falls back to debug signing (see app/build.gradle.kts),
+      # so this still builds to smoke-test the R8-minified shape. A tagged
+      # release is different — publishing a debug-signed APK as "the"
+      # signed release would be silently wrong, so that case fails the job
+      # instead (see the guard below).
+      - name: Build release APK
         working-directory: android
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -91,11 +98,39 @@ jobs:
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > app/release.jks
             export ANDROID_KEYSTORE_PATH="release.jks"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not set — refusing to publish a debug-signed APK as the signed release for $GITHUB_REF. Add the ANDROID_KEYSTORE_* repo secrets first (see android/README.md)." >&2
+            exit 1
           fi
-          ./gradlew bundleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
-          name: world-time-release-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          name: world-time-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      # Only for tagged releases (see the `tags` trigger above) — the debug
+      # APK above is already covered by the rolling "latest" release, this
+      # is the signed build people actually install.
+      - name: Compute release APK checksum
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: android/app/build/outputs/apk/release
+        run: sha256sum app-release.apk > app-release.apk.sha256
+
+      - name: Publish signed release APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            Signed release build (not the debug build above) — this is the
+            one to install. Sideload it directly, e.g.
+            `adb install app-release.apk`, and optionally verify it wasn't
+            corrupted/tampered with first:
+
+            ```
+            sha256sum -c app-release.apk.sha256
+            ```
+          files: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/release/app-release.apk.sha256

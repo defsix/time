@@ -91,6 +91,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-07-12
 
+- Android release builds now produce a signed `.apk` instead of a `.aab` — World Time is distributed only via GitHub Releases, not the Play Store, so the App Bundle format was dead weight. Pushing a `v*` tag now builds the signed release APK and publishes it (with a `.sha256` checksum) to a matching GitHub Release; the workflow refuses to publish a tagged release at all if the signing secrets aren't set, rather than silently shipping a debug-signed APK as "the" release.
 - Reverted the Daydream/screen saver feature added earlier today — after installing it, the Android app started showing a blank white screen on every launch (not specific to using the screensaver itself, and not fixed by clearing app storage). Rolled back to isolate whether the regression was actually in that change or in the prior (2026-07-09) release, before rebuilding the feature more carefully.
 - Set the Android WebView's cache mode to `LOAD_NO_CACHE` for the bundled app assets — they're read straight out of the APK, not fetched over a real network, so there's no cost to skipping the HTTP cache, and it removes one possible way a stale cached page could survive an in-place app update.
 
