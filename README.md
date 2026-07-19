@@ -46,8 +46,13 @@ automatically:
 
 - [`android/`](android/) — Kotlin, `WebView` + `WebViewAssetLoader`, with
   city alarms and a Nightstand/bedside clock mode. See
-  [`android/README.md`](android/README.md). Latest debug APK:
-  <https://github.com/defsix/time/releases/download/android-debug-latest/app-debug.apk>
+  [`android/README.md`](android/README.md).
+  **Signed release (recommended):**
+  <https://github.com/defsix/time/releases/latest> — the actual
+  distribution build, sideload it directly.
+  [Latest debug build](https://github.com/defsix/time/releases/download/android-debug-latest/app-debug.apk)
+  is also available (rebuilt on every push to `main`), useful for testing
+  in-progress changes but not signed for real use.
 - [`ios/`](ios/) — Swift/SwiftUI, `WKWebView` + a custom `app://` scheme
   handler, a CoreLocation-backed geolocation bridge, and the same city
   alarms / Nightstand mode as Android (backed by local notifications
@@ -93,6 +98,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 - Cut the first tagged release (`v1.0`) via the signed-APK release workflow.
 - Renamed the release APK from AGP's generic default (`app-release.apk`) to `world-time-v<versionName>.apk`, so downloads from different releases don't collide/overwrite each other in the same folder. CI now matches the release output by glob rather than a hardcoded filename.
+- Pointed the [Mobile apps](#mobile-apps) section at the actual signed release (`releases/latest`) instead of only the unsigned rolling debug build.
 
 ### 2026-07-12
 
