@@ -100,6 +100,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 - Added full multilingual support. The UI now auto-detects the device/browser language and renders in English, Spanish, French, German, Portuguese, Japanese, Simplified Chinese, Polish, Russian, or Czech — every panel, button, and the Time Sources' technical prose is translated, and dates/times switch to each locale's own formatting conventions (not just the language). Falls back to English for anything else.
 - Corrected a stale "What it does" bullet that still described the day/night terminator as a sharp line — it's been a soft gradient since the 2026-07-19 changes.
+- Bumped to `versionCode 4` / `versionName "1.3"`, ready for a `v1.3` tag — the signed release build only runs on a version tag push, so `v1.2` predates (and doesn't include) the multilingual UI above.
 
 ### 2026-07-19
 
