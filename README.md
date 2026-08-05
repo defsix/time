@@ -98,7 +98,7 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ### 2026-08-05
 
-- Added full multilingual support. The UI now auto-detects the device/browser language and renders in English, Spanish, French, German, Portuguese, Japanese, Simplified Chinese, Polish, Russian, or Czech — every panel, button, and the Time Sources' technical prose is translated, and dates/times switch to each locale's own formatting conventions (not just the language). Falls back to English for anything else.
+- **The app is now multilingual.** The UI automatically follows your device/browser language, no settings to change — English, Spanish, French, German, Portuguese, Japanese, Simplified Chinese, Polish, Russian, and Czech are all fully translated: every panel, button, and label, including the Time Sources panel's detailed technical descriptions and the moon phase names. Falls back to English for any other language. Dates and times also follow your own locale's conventions (date order, month names, 12h/24h defaults), not just the translated language. Covers both the web app and the Android/iOS apps automatically, since they're WebView wrappers around the same web UI — no separate per-platform translation work. City/country names and the standalone privacy policy page are not translated (out of scope).
 - Corrected a stale "What it does" bullet that still described the day/night terminator as a sharp line — it's been a soft gradient since the 2026-07-19 changes.
 - Bumped to `versionCode 4` / `versionName "1.3"`, ready for a `v1.3` tag — the signed release build only runs on a version tag push, so `v1.2` predates (and doesn't include) the multilingual UI above.
 
