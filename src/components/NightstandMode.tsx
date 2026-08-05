@@ -3,6 +3,7 @@ import Globe from './Globe'
 import type { City } from '../lib/cities'
 import { listCityAlarms, type CityAlarm } from '../lib/nativeBridge'
 import { useWakeLock } from '../lib/useWakeLock'
+import { t } from '../lib/i18n'
 
 // OrbitControls unit: seconds per revolution at 60fps = 60 / speed.
 // 60 / 0.1 = 600s = one revolution per 10 minutes.
@@ -20,7 +21,7 @@ interface NightstandModeProps {
 }
 
 function timeAt(now: Date, timeZone: string, hour12: boolean): string {
-  return new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit', hour12 }).format(now)
+  return new Intl.DateTimeFormat(undefined, { timeZone, hour: 'numeric', minute: '2-digit', hour12 }).format(now)
 }
 
 export default function NightstandMode({
@@ -51,7 +52,7 @@ export default function NightstandMode({
   }, [])
 
   const time = timeAt(now, timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, hour12)
-  const date = new Intl.DateTimeFormat('en-US', {
+  const date = new Intl.DateTimeFormat(undefined, {
     timeZone,
     weekday: 'long',
     month: 'long',
@@ -59,7 +60,7 @@ export default function NightstandMode({
   }).format(now)
 
   return (
-    <div className="nightstand" onClick={onExit} role="button" tabIndex={0} aria-label="Exit nightstand mode">
+    <div className="nightstand" onClick={onExit} role="button" tabIndex={0} aria-label={t.nightstand.exitAria}>
       <div className="nightstand-globe-layer">
         <Globe
           onSelectCity={() => {}}
@@ -97,7 +98,7 @@ export default function NightstandMode({
                 <div key={alarm.id} className="nightstand-row">
                   <span className="nightstand-row-name">⏰ {alarm.label}</span>
                   <span className="nightstand-row-time">
-                    {new Intl.DateTimeFormat('en-US', {
+                    {new Intl.DateTimeFormat(undefined, {
                       weekday: 'short',
                       hour: 'numeric',
                       minute: '2-digit',
@@ -110,7 +111,7 @@ export default function NightstandMode({
         )}
       </div>
 
-      <div className="nightstand-hint">Tap anywhere to exit</div>
+      <div className="nightstand-hint">{t.nightstand.tapToExit}</div>
     </div>
   )
 }

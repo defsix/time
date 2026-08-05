@@ -1,4 +1,5 @@
 import { formatOffset } from '../lib/geo'
+import { t } from '../lib/i18n'
 
 interface ClockCardProps {
   title: string
@@ -13,21 +14,21 @@ interface ClockCardProps {
 
 function partsFor(now: Date, hour12: boolean, timeZone?: string, solarOffsetHours?: number) {
   if (timeZone) {
-    const time = new Intl.DateTimeFormat('en-US', {
+    const time = new Intl.DateTimeFormat(undefined, {
       timeZone,
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
       hour12,
     }).format(now)
-    const date = new Intl.DateTimeFormat('en-US', {
+    const date = new Intl.DateTimeFormat(undefined, {
       timeZone,
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     }).format(now)
-    const offsetPart = new Intl.DateTimeFormat('en-US', {
+    const offsetPart = new Intl.DateTimeFormat(undefined, {
       timeZone,
       timeZoneName: 'shortOffset',
     })
@@ -36,14 +37,14 @@ function partsFor(now: Date, hour12: boolean, timeZone?: string, solarOffsetHour
     return { time, date, offsetLabel: offsetPart ?? '' }
   }
   const shifted = new Date(now.getTime() + (solarOffsetHours ?? 0) * 3600_000)
-  const time = new Intl.DateTimeFormat('en-US', {
+  const time = new Intl.DateTimeFormat(undefined, {
     timeZone: 'UTC',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12,
   }).format(shifted)
-  const date = new Intl.DateTimeFormat('en-US', {
+  const date = new Intl.DateTimeFormat(undefined, {
     timeZone: 'UTC',
     weekday: 'long',
     year: 'numeric',
@@ -76,9 +77,7 @@ export default function ClockCard({
       <div className="clock-card-time">{time}</div>
       <div className="clock-card-date">{date}</div>
       <div className="clock-card-subtitle">{subtitle}</div>
-      {!timeZone && (
-        <div className="clock-card-note">Approximate solar time (15°/hr) — no official time zone data for this exact point.</div>
-      )}
+      {!timeZone && <div className="clock-card-note">{t.clockCard.approxSolarNote}</div>}
     </div>
   )
 }

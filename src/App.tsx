@@ -18,6 +18,7 @@ import { usePinnedCities } from './lib/usePinnedCities'
 import { approxSolarOffsetHours } from './lib/geo'
 import { findNearestCity } from './lib/allCities'
 import { readShareParamsFromURL, writeShareParamsToURL } from './lib/shareLink'
+import { t } from './lib/i18n'
 import type { City } from './lib/cities'
 import './App.css'
 
@@ -119,7 +120,7 @@ export default function App() {
     selection?.kind === 'city'
       ? { lat: selection.city.lat, lon: selection.city.lon, tz: selection.city.tz, label: `${selection.city.name}, ${selection.city.country}` }
       : userLocation
-        ? { lat: userLocation.lat, lon: userLocation.lon, tz: userTimeZone, label: 'Your Location' }
+        ? { lat: userLocation.lat, lon: userLocation.lon, tz: userTimeZone, label: t.app.yourLocation }
         : null
 
   if (nightstandMode) {
@@ -127,7 +128,7 @@ export default function App() {
       <NightstandMode
         now={now}
         timeZone={selection?.kind === 'city' ? selection.city.tz : userTimeZone}
-        label={selection?.kind === 'city' ? `${selection.city.name}, ${selection.city.country}` : 'Your Location'}
+        label={selection?.kind === 'city' ? `${selection.city.name}, ${selection.city.country}` : t.app.yourLocation}
         hour12={hour12}
         selectedCityName={selection?.kind === 'city' ? selection.city.name : null}
         userLocation={userLocation}
@@ -141,12 +142,12 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div>
-          <h1>World Time</h1>
-          <p>A Live World Clock, click any city to see its time.</p>
+          <h1>{t.app.title}</h1>
+          <p>{t.app.subtitle}</p>
         </div>
         <div className="header-toggles">
           <button className="nightstand-toggle-btn" onClick={() => setNightstandMode(true)}>
-            Nightstand
+            {t.app.nightstand}
           </button>
           <HourFormatToggle choice={hourFormatChoice} onChange={setHourFormatChoice} />
           <ThemeToggle choice={themeChoice} onChange={setThemeChoice} />
@@ -163,29 +164,26 @@ export default function App() {
             userLocation={userLocation}
             flyToRequest={flyToRequest}
           />
-          <div className="globe-hint">
-            Drag to rotate · scroll to zoom · tap near a marker for a city, or tap anywhere else on the globe
-            for an approximate local time
-          </div>
+          <div className="globe-hint">{t.app.globeHint}</div>
           <CitySearch onSelectCity={(city) => selectCity(city, true)} />
         </section>
 
         <section className="panels-section">
           <ClockCard
-            title="Your Location"
-            subtitle={`${userTimeZone}${geoStatus === 'denied' ? ' (location permission denied — using browser time zone only)' : geoStatus === 'unsupported' ? ' (geolocation unsupported — using browser time zone)' : ''}`}
+            title={t.app.yourLocation}
+            subtitle={`${userTimeZone}${geoStatus === 'denied' ? t.app.geoDenied : geoStatus === 'unsupported' ? t.app.geoUnsupported : ''}`}
             now={now}
             timeZone={userTimeZone}
             accent="user"
             hour12={hour12}
             headerExtra={
-              isAlarmBridgeAvailable() ? <CityAlarms targetTz={userTimeZone} targetLabel="Your Location" /> : undefined
+              isAlarmBridgeAvailable() ? <CityAlarms targetTz={userTimeZone} targetLabel={t.app.yourLocation} /> : undefined
             }
           />
 
           {selection && (
             <ClockCard
-              title={selection.kind === 'city' ? `${selection.city.name}, ${selection.city.country}` : 'Selected Point'}
+              title={selection.kind === 'city' ? `${selection.city.name}, ${selection.city.country}` : t.app.selectedPoint}
               subtitle={
                 selection.kind === 'city'
                   ? selection.city.tz
@@ -203,7 +201,7 @@ export default function App() {
                       className={`clock-card-icon-btn ${isPinned(selection.city) ? 'active' : ''}`}
                       onClick={() => togglePin(selection.city)}
                     >
-                      {isPinned(selection.city) ? 'Pinned' : 'Pin'}
+                      {isPinned(selection.city) ? t.clockCard.pinned : t.clockCard.pin}
                     </button>
                   )}
                   {selection.kind === 'city' && isAlarmBridgeAvailable() && (
@@ -239,12 +237,7 @@ export default function App() {
         </section>
       </main>
 
-      <footer className="app-footer">
-        Built with Three.js. Time cross-checked against TimeAPI.io, Binance's clock-sync endpoint, and a
-        WorldTimeAPI-compatible HTTP time service (time.now) — see the Time Sources panel for live tech
-        details on each. Sunrise, sunset, and moon phase are computed locally from standard solar/lunar
-        position formulas.
-      </footer>
+      <footer className="app-footer">{t.app.footer}</footer>
     </div>
   )
 }

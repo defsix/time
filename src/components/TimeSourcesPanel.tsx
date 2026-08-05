@@ -1,4 +1,5 @@
 import type { TimeSourceResult } from '../lib/timeSources'
+import { t } from '../lib/i18n'
 
 interface TimeSourcesPanelProps {
   results: TimeSourceResult[]
@@ -17,75 +18,70 @@ export default function TimeSourcesPanel({ results, consensusOffset, lastSyncedA
   return (
     <div className="sources-panel">
       <div className="sources-header">
-        <h2>Time Sources</h2>
-        <button className="resync-btn" onClick={onResync}>Resync</button>
+        <h2>{t.timeSourcesPanel.title}</h2>
+        <button className="resync-btn" onClick={onResync}>{t.timeSourcesPanel.resync}</button>
       </div>
       <p className="sources-summary">
         {consensusOffset === null
-          ? 'Measuring network sources…'
-          : `Device clock is ${Math.abs(Math.round(consensusOffset))} ms ${consensusOffset >= 0 ? 'ahead of' : 'behind'} the multi-source consensus.`}
+          ? t.timeSourcesPanel.measuring
+          : t.timeSourcesPanel.deviceClockStatus(Math.abs(Math.round(consensusOffset)), consensusOffset >= 0 ? 'ahead' : 'behind')}
         {lastSyncedAt && (
-          <span className="sources-synced-at"> Last checked {new Date(lastSyncedAt).toLocaleTimeString()}.</span>
+          <span className="sources-synced-at">{t.timeSourcesPanel.lastChecked(new Date(lastSyncedAt).toLocaleTimeString())}</span>
         )}
       </p>
       <div className="sources-list">
-        {results.map((r) => (
-          <details key={r.id} className="source-item" open={r.status === 'error'}>
-            <summary>
-              {statusDot(r.status)}
-              <span className="source-name">{r.name}</span>
-              {r.status === 'ok' && r.id !== 'device' && (
-                <span className="source-metrics">
-                  {r.latencyMs}ms rtt · offset {r.offsetMs}ms
-                </span>
-              )}
-              {r.status === 'error' && <span className="source-metrics error">failed</span>}
-              {r.status === 'pending' && <span className="source-metrics">checking…</span>}
-            </summary>
-            <div className="source-detail">
-              <div><strong>Endpoint:</strong> {r.url}</div>
-              <div><strong>Method:</strong> {r.method}</div>
-              <div><strong>Protocol:</strong> {r.protocol}</div>
-              <div className="source-desc">{r.description}</div>
-              {r.status === 'ok' && r.id !== 'device' && (
-                <div className="source-http-meta">
-                  {r.httpStatus !== null && (
-                    <span><strong>HTTP:</strong> {r.httpStatus}</span>
-                  )}
-                  {r.contentType && (
-                    <span><strong>Content-Type:</strong> {r.contentType}</span>
-                  )}
-                  {r.sizeBytes !== null && (
-                    <span><strong>Size:</strong> {r.sizeBytes} B</span>
-                  )}
-                </div>
-              )}
-              {r.status === 'ok' && r.timing && (
-                <div className="source-http-meta">
-                  <span><strong>DNS:</strong> {Math.round(r.timing.dnsMs)}ms</span>
-                  <span><strong>Connect:</strong> {Math.round(r.timing.connectMs)}ms</span>
-                  <span><strong>TTFB:</strong> {Math.round(r.timing.ttfbMs)}ms</span>
-                  <span><strong>Download:</strong> {Math.round(r.timing.downloadMs)}ms</span>
-                </div>
-              )}
-              {r.status === 'ok' && r.raw && r.id !== 'device' && (
-                <div className="source-raw">
-                  <strong>Raw response:</strong>
-                  <pre>{r.raw}</pre>
-                </div>
-              )}
-              {r.status === 'error' && <div className="source-error"><strong>Error:</strong> {r.error}</div>}
-            </div>
-          </details>
-        ))}
+        {results.map((r) => {
+          const source = t.timeSources[r.id as keyof typeof t.timeSources]
+          return (
+            <details key={r.id} className="source-item" open={r.status === 'error'}>
+              <summary>
+                {statusDot(r.status)}
+                <span className="source-name">{source.name}</span>
+                {r.status === 'ok' && r.id !== 'device' && (
+                  <span className="source-metrics">{t.timeSourcesPanel.rttOffset(r.latencyMs ?? 0, r.offsetMs ?? 0)}</span>
+                )}
+                {r.status === 'error' && <span className="source-metrics error">{t.timeSourcesPanel.failed}</span>}
+                {r.status === 'pending' && <span className="source-metrics">{t.timeSourcesPanel.checking}</span>}
+              </summary>
+              <div className="source-detail">
+                <div><strong>{t.timeSourcesPanel.endpoint}</strong> {r.url}</div>
+                <div><strong>{t.timeSourcesPanel.method}</strong> {r.method}</div>
+                <div><strong>{t.timeSourcesPanel.protocol}</strong> {source.protocol}</div>
+                <div className="source-desc">{source.description}</div>
+                {r.status === 'ok' && r.id !== 'device' && (
+                  <div className="source-http-meta">
+                    {r.httpStatus !== null && (
+                      <span><strong>{t.timeSourcesPanel.http}</strong> {r.httpStatus}</span>
+                    )}
+                    {r.contentType && (
+                      <span><strong>{t.timeSourcesPanel.contentType}</strong> {r.contentType}</span>
+                    )}
+                    {r.sizeBytes !== null && (
+                      <span><strong>{t.timeSourcesPanel.size}</strong> {r.sizeBytes} B</span>
+                    )}
+                  </div>
+                )}
+                {r.status === 'ok' && r.timing && (
+                  <div className="source-http-meta">
+                    <span><strong>{t.timeSourcesPanel.dns}</strong> {Math.round(r.timing.dnsMs)}ms</span>
+                    <span><strong>{t.timeSourcesPanel.connect}</strong> {Math.round(r.timing.connectMs)}ms</span>
+                    <span><strong>{t.timeSourcesPanel.ttfb}</strong> {Math.round(r.timing.ttfbMs)}ms</span>
+                    <span><strong>{t.timeSourcesPanel.download}</strong> {Math.round(r.timing.downloadMs)}ms</span>
+                  </div>
+                )}
+                {r.status === 'ok' && r.raw && r.id !== 'device' && (
+                  <div className="source-raw">
+                    <strong>{t.timeSourcesPanel.rawResponse}</strong>
+                    <pre>{r.raw}</pre>
+                  </div>
+                )}
+                {r.status === 'error' && <div className="source-error"><strong>{t.timeSourcesPanel.error}</strong> {r.error}</div>}
+              </div>
+            </details>
+          )
+        })}
       </div>
-      <p className="sources-footnote">
-        Each source is fetched independently and timed with the browser's Performance API, retrying once on a
-        dropped or slow connection before it's marked failed — mobile networks routinely stall one attempt in a
-        row. The offset for each network source estimates one-way latency as half the round trip (NTP-style) and
-        compares the result to your device clock. The consensus value used to correct the displayed time is the
-        median offset across all successfully-reached sources, so a single slow or wrong API can't skew the result.
-      </p>
+      <p className="sources-footnote">{t.timeSourcesPanel.footnote}</p>
     </div>
   )
 }

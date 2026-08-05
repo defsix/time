@@ -1,4 +1,5 @@
 import type { City } from '../lib/cities'
+import { t } from '../lib/i18n'
 
 interface PinnedCitiesStripProps {
   cities: City[]
@@ -9,7 +10,7 @@ interface PinnedCitiesStripProps {
 }
 
 function timeFor(now: Date, tz: string, hour12: boolean): string {
-  return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12 }).format(now)
+  return new Intl.DateTimeFormat(undefined, { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12 }).format(now)
 }
 
 export default function PinnedCitiesStrip({ cities, now, hour12, onSelect, onRemove }: PinnedCitiesStripProps) {
@@ -22,7 +23,7 @@ export default function PinnedCitiesStrip({ cities, now, hour12, onSelect, onRem
             className="pinned-tile-remove"
             role="button"
             tabIndex={0}
-            aria-label={`Unpin ${city.name}`}
+            aria-label={t.pinnedCities.unpinAria(city.name)}
             onClick={(e) => {
               e.stopPropagation()
               onRemove(city)

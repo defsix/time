@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { t } from '../lib/i18n'
 
 export default function CopyLinkButton() {
   const [copied, setCopied] = useState(false)
@@ -16,7 +17,7 @@ export default function CopyLinkButton() {
         }
       }}
     >
-      {copied ? 'Copied!' : 'Copy link'}
+      {copied ? t.copyLink.copied : t.copyLink.copyLink}
     </button>
   )
 }

@@ -95,10 +95,20 @@ export function getSunTimes(date: Date, lat: number, lon: number): SunTimes {
   return { sunrise, sunset, solarNoon, dayLengthMinutes, alwaysDay: false, alwaysNight: false }
 }
 
+export type MoonPhaseName =
+  | 'newMoon'
+  | 'waxingCrescent'
+  | 'firstQuarter'
+  | 'waxingGibbous'
+  | 'fullMoon'
+  | 'waningGibbous'
+  | 'lastQuarter'
+  | 'waningCrescent'
+
 export interface MoonPhase {
   phase: number // 0 = new moon, 0.5 = full moon, approaching 1 = new moon again
   illumination: number // 0..1
-  name: string
+  name: MoonPhaseName
   waxing: boolean
 }
 
@@ -111,15 +121,15 @@ export function getMoonPhase(date: Date): MoonPhase {
   if (phase < 0) phase += 1
   const illumination = (1 - Math.cos(2 * Math.PI * phase)) / 2
 
-  let name: string
-  if (phase < 0.02 || phase > 0.98) name = 'New Moon'
-  else if (phase < 0.24) name = 'Waxing Crescent'
-  else if (phase < 0.26) name = 'First Quarter'
-  else if (phase < 0.49) name = 'Waxing Gibbous'
-  else if (phase < 0.51) name = 'Full Moon'
-  else if (phase < 0.74) name = 'Waning Gibbous'
-  else if (phase < 0.76) name = 'Last Quarter'
-  else name = 'Waning Crescent'
+  let name: MoonPhaseName
+  if (phase < 0.02 || phase > 0.98) name = 'newMoon'
+  else if (phase < 0.24) name = 'waxingCrescent'
+  else if (phase < 0.26) name = 'firstQuarter'
+  else if (phase < 0.49) name = 'waxingGibbous'
+  else if (phase < 0.51) name = 'fullMoon'
+  else if (phase < 0.74) name = 'waningGibbous'
+  else if (phase < 0.76) name = 'lastQuarter'
+  else name = 'waningCrescent'
 
   return { phase, illumination, name, waxing: phase < 0.5 }
 }

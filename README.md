@@ -8,7 +8,7 @@ A live world clock with a wireframe 3D globe — click any city to see its time,
 
 ## What it does
 
-- **Wireframe globe.** A Three.js globe with a lat/lon graticule, country border outlines, and a real day/night terminator computed from the actual subsolar point — no glow-band fudging, just a clean sharp line that tracks the real sun as the globe rotates.
+- **Wireframe globe.** A Three.js globe with a lat/lon graticule, country border outlines, and a real day/night terminator computed from the actual subsolar point — a soft graduated fade from day into night that tracks the real sun as the globe rotates.
 - **Live sun & moon markers.** Small markers orbiting the globe show where the sun and moon are actually overhead right now, each trailed by a thin ring tracing the path it sweeps as the day (or lunar day) progresses — real right ascension/declination math (a Meeus low-precision lunar position series for the moon), not just a decorative motif.
 - **~250 clickable cities**, plus a search box covering roughly 7,300 more. Click or tap near a marker (a generous invisible hit area makes this easy on touchscreens) to fly the camera there and see its local time.
 - **Nearest-city default.** On load, if you allow location access, the app finds and flies to your nearest known city automatically.
@@ -18,6 +18,7 @@ A live world clock with a wireframe 3D globe — click any city to see its time,
 - **Multi-source time sync.** The displayed time is corrected using the median offset across several independent time APIs (see below), each shown with live tech details — endpoint, protocol, HTTP status, response size, timing, and raw response — so the "trust but verify" is actually verifiable.
 - **Sun & Moon panel.** Sunrise, sunset, solar noon, and day length for the selected city (computed client-side via the standard sunrise equation, correctly handling polar day/night), plus the current moon phase with a hand-drawn phase icon — no network dependency for any of it.
 - **Light / dark / auto theme**, and a **12h / 24h / auto** time format toggle, both persisted.
+- **Multilingual UI.** The app automatically follows your device/browser language — English, Spanish, French, German, Portuguese, Japanese, Simplified Chinese, Polish, Russian, and Czech are all fully translated (dates and times use your locale's own conventions too), with a plain-English fallback for anything else.
 
 ## Time sources
 
@@ -94,6 +95,11 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 </details>
 
 ## Changelog
+
+### 2026-08-05
+
+- Added full multilingual support. The UI now auto-detects the device/browser language and renders in English, Spanish, French, German, Portuguese, Japanese, Simplified Chinese, Polish, Russian, or Czech — every panel, button, and the Time Sources' technical prose is translated, and dates/times switch to each locale's own formatting conventions (not just the language). Falls back to English for anything else.
+- Corrected a stale "What it does" bullet that still described the day/night terminator as a sharp line — it's been a soft gradient since the 2026-07-19 changes.
 
 ### 2026-07-19
 

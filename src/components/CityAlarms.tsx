@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { nextOccurrenceEpoch } from '../lib/alarmTime'
+import { t } from '../lib/i18n'
 import {
   type CityAlarm,
   cancelCityAlarm,
@@ -22,7 +23,7 @@ const PANEL_WIDTH = 280
 const VIEWPORT_MARGIN = 8
 
 function formatAlarmTime(epochMillis: number, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(undefined, {
     timeZone,
     weekday: 'short',
     hour: 'numeric',
@@ -89,7 +90,7 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
     if (!(await hasNotificationPermission())) {
       const granted = await requestNotificationPermission()
       if (!granted) {
-        setStatus('Notifications permission is required to ring an alarm.')
+        setStatus(t.cityAlarms.notifPermRequired)
         refresh()
         return
       }
@@ -103,11 +104,11 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
 
     const result = await scheduleCityAlarm(id, targetLabel, epoch, targetLabel)
     if (result === 'ok') {
-      setStatus(`Alarm set for ${formatAlarmTime(epoch, targetTz)}.`)
+      setStatus(t.cityAlarms.alarmSetFor(formatAlarmTime(epoch, targetTz)))
     } else if (result === 'ok_inexact') {
-      setStatus(`Alarm set (may ring up to ~10 min late — grant exact alarm access below for precise timing).`)
+      setStatus(t.cityAlarms.alarmSetInexact)
     } else {
-      setStatus('Notifications permission is required to ring an alarm.')
+      setStatus(t.cityAlarms.notifPermRequired)
     }
     refresh()
   }
@@ -124,7 +125,7 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
         className={`clock-card-icon-btn ${open ? 'active' : ''}`}
         onClick={() => setOpen((v) => !v)}
       >
-        Alarm
+        {t.cityAlarms.alarm}
       </button>
 
       {open && (
@@ -137,7 +138,7 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
               className="city-alarms-time-input"
             />
             <button className="city-alarms-set-btn" onClick={handleSetAlarm}>
-              Set alarm for {targetLabel}
+              {t.cityAlarms.setAlarmFor(targetLabel)}
             </button>
           </div>
 
@@ -145,18 +146,18 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
 
           {needsNotificationPermission && (
             <div className="city-alarms-nudge">
-              Notifications are off, so alarms can't ring.{' '}
+              {t.cityAlarms.notifOffNudge}{' '}
               <button className="city-alarms-nudge-btn" onClick={() => requestNotificationPermission().then(refresh)}>
-                Enable notifications
+                {t.cityAlarms.enableNotifications}
               </button>
             </div>
           )}
 
           {!needsNotificationPermission && needsExactAlarmPermission && (
             <div className="city-alarms-nudge">
-              Exact alarm access isn't granted — alarms may ring up to ~10 min late.{' '}
+              {t.cityAlarms.exactAlarmNudge}{' '}
               <button className="city-alarms-nudge-btn" onClick={requestExactAlarmPermission}>
-                Grant exact alarms
+                {t.cityAlarms.grantExactAlarms}
               </button>
             </div>
           )}
@@ -169,7 +170,7 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
                 .map((alarm) => (
                   <li key={alarm.id} className="city-alarms-list-item">
                     <span>
-                      {alarm.label} — {new Intl.DateTimeFormat('en-US', {
+                      {alarm.label} — {new Intl.DateTimeFormat(undefined, {
                         weekday: 'short',
                         hour: 'numeric',
                         minute: '2-digit',

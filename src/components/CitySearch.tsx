@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadAllCities } from '../lib/allCities'
+import { t } from '../lib/i18n'
 import type { City } from '../lib/cities'
 
 interface CitySearchProps {
@@ -35,14 +36,14 @@ export default function CitySearch({ onSelectCity }: CitySearchProps) {
     <div className="city-search">
       <input
         type="text"
-        placeholder="Search all cities…"
+        placeholder={t.citySearch.placeholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        aria-label="Search for a city"
+        aria-label={t.citySearch.ariaLabel}
       />
       {showLoadingHint && (
         <ul className="city-search-results">
-          <li className="city-search-loading">Loading city index…</li>
+          <li className="city-search-loading">{t.citySearch.loading}</li>
         </ul>
       )}
       {matches.length > 0 && (
