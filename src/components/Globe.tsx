@@ -5,6 +5,7 @@ import { CITIES, type City } from '../lib/cities'
 import { latLonToVector3, vector3ToLatLon, slerpUnitVectors } from '../lib/geo'
 import { buildCountryBorderGeometry } from '../lib/countryBorders'
 import { subSolarPoint, subLunarPoint } from '../lib/astronomy'
+import { t } from '../lib/i18n'
 
 const RADIUS = 2
 const FLY_DURATION_MS = 1200
@@ -150,7 +151,7 @@ export default function Globe({
       controls.autoRotate = false
       returnHomeTimer = setTimeout(() => {
         returnHomeTimer = null
-        if (userLocation) flyToTarget(userLocation.lat, userLocation.lon, 'Your Location')
+        if (userLocation) flyToTarget(userLocation.lat, userLocation.lon, t.app.yourLocation)
         startRotateTimer = setTimeout(() => {
           startRotateTimer = null
           controls.autoRotate = true
@@ -442,11 +443,11 @@ export default function Globe({
       // no highlight ring) — just a name label, tracking the marker's own
       // live-updating position since showLabelAt stores it by reference.
       if (raycaster.intersectObject(sunHitMesh).length > 0) {
-        showLabelAt(sunMarker.position, 'Sun')
+        showLabelAt(sunMarker.position, t.globe.sun)
         return
       }
       if (raycaster.intersectObject(moonHitMesh).length > 0) {
-        showLabelAt(moonMarker.position, 'Moon')
+        showLabelAt(moonMarker.position, t.globe.moon)
         return
       }
 

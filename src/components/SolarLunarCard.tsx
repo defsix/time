@@ -1,4 +1,5 @@
 import { getSunTimes, getMoonPhase, moonPhasePathD } from '../lib/astronomy'
+import { t } from '../lib/i18n'
 
 interface LocationInfo {
   lat: number
@@ -14,7 +15,7 @@ interface SolarLunarCardProps {
 }
 
 function formatTime(date: Date, tz: string, hour12: boolean): string {
-  return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12 }).format(date)
+  return new Intl.DateTimeFormat(undefined, { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12 }).format(date)
 }
 
 function formatDuration(minutes: number): string {
@@ -33,32 +34,30 @@ export default function SolarLunarCard({ now, location, hour12 }: SolarLunarCard
   return (
     <div className="solar-lunar-card">
       <div className="clock-card-header">
-        <span className="clock-card-title">Sun &amp; Moon</span>
-        <span className="clock-card-offset">{location ? location.label : 'Moon phase is location-independent'}</span>
+        <span className="clock-card-title">{t.solarLunar.title}</span>
+        <span className="clock-card-offset">{location ? location.label : t.solarLunar.locationIndependent}</span>
       </div>
       <div className="solar-lunar-grid">
         <div className="solar-block">
-          {!location && (
-            <div className="sun-note">Select a city, or allow location access, to see sunrise &amp; sunset times here.</div>
-          )}
-          {location && sun && sun.alwaysDay && <div className="sun-note">The sun does not set today at this location (polar day).</div>}
-          {location && sun && sun.alwaysNight && <div className="sun-note">The sun does not rise today at this location (polar night).</div>}
+          {!location && <div className="sun-note">{t.solarLunar.selectCityNote}</div>}
+          {location && sun && sun.alwaysDay && <div className="sun-note">{t.solarLunar.polarDay}</div>}
+          {location && sun && sun.alwaysNight && <div className="sun-note">{t.solarLunar.polarNight}</div>}
           {location && sun && !sun.alwaysDay && !sun.alwaysNight && sun.sunrise && sun.sunset && (
             <>
               <div className="sun-row">
-                <span>Sunrise</span>
+                <span>{t.solarLunar.sunrise}</span>
                 <strong>{formatTime(sun.sunrise, location.tz, hour12)}</strong>
               </div>
               <div className="sun-row">
-                <span>Sunset</span>
+                <span>{t.solarLunar.sunset}</span>
                 <strong>{formatTime(sun.sunset, location.tz, hour12)}</strong>
               </div>
               <div className="sun-row">
-                <span>Solar noon</span>
+                <span>{t.solarLunar.solarNoon}</span>
                 <strong>{formatTime(sun.solarNoon, location.tz, hour12)}</strong>
               </div>
               <div className="sun-row">
-                <span>Day length</span>
+                <span>{t.solarLunar.dayLength}</span>
                 <strong>{formatDuration(sun.dayLengthMinutes ?? 0)}</strong>
               </div>
             </>
@@ -71,8 +70,8 @@ export default function SolarLunarCard({ now, location, hour12 }: SolarLunarCard
             <circle cx={MOON_ICON_R} cy={MOON_ICON_R} r={MOON_ICON_R - 1} className="moon-icon-outline" fill="none" />
           </svg>
           <div className="moon-info">
-            <strong>{moon.name}</strong>
-            <span>{Math.round(moon.illumination * 100)}% illuminated</span>
+            <strong>{t.moonPhases[moon.name]}</strong>
+            <span>{t.solarLunar.illuminated(Math.round(moon.illumination * 100))}</span>
           </div>
         </div>
       </div>
