@@ -20,6 +20,22 @@ A live world clock with a photorealistic 3D globe — click any city to see its 
 - **Light / dark / auto theme**, and a **12h / 24h / auto** time format toggle, both persisted.
 - **Multilingual UI.** The app automatically follows your device/browser language — English, Spanish, French, German, Portuguese, Japanese, Simplified Chinese, Polish, Russian, and Czech are all fully translated (dates and times use your locale's own conventions too), with a plain-English fallback for anything else.
 
+## The globe
+
+The core sphere is rendered with real NASA-sourced imagery rather than flat colors — the same day/night/terrain/cloud texture set bundled with three.js's own official examples:
+
+- **Day side** — true-color satellite imagery, lit per-pixel from the real subsolar direction (not the fixed light rig Three.js normally uses), with a mild gamma lift so oceans and forests read as vivid rather than the muted true-color tone the raw imagery has at full daylight.
+- **Terrain relief** — a tangent-space normal map perturbs the lighting normal so mountain ranges actually catch and fall away from the light directionally. The tangent basis is reconstructed on the fly from screen-space derivatives (no precomputed vertex tangents needed), which gets numerically unstable at the sphere's grazing silhouette — so relief is applied as a small *bounded correction* on top of the always-stable flat-normal lighting, rather than driving brightness on its own. (Chasing this down was the interesting bug of the whole feature: without the bound, the instability was darkening a much wider band near the limb than the real day/night terminator ever does.)
+- **Ocean specular** — a land/water mask drives a Blinn-Phong highlight so oceans shine near the subsolar point and land doesn't, faded out near the limb for the same stability reason as the relief shading.
+- **Night side** — real city lights, blended in via the same real subsolar direction that drives the (unchanged, geography-accurate) day/night terminator.
+- **Clouds** — a separate, semi-transparent shell drifting slowly and independently of the camera-driven globe orientation, lit by an actual `DirectionalLight` positioned at the live sun direction each frame.
+- **Atmosphere** — a backside-rendered, additively-blended Fresnel glow shell that brightens toward the limb, replacing what used to be a faint wireframe "shell" mesh.
+
+<p align="center">
+  <img src="docs/screenshots/night-lights.png" alt="Night side of the globe showing real city lights" width="380" />
+  <img src="docs/screenshots/nightstand.png" alt="Nightstand / bedside clock mode" width="380" />
+</p>
+
 ## Time sources
 
 Rather than trusting a single API, the site independently queries several time services, estimates each one's clock offset from the device's using an NTP-style midpoint calculation, and uses the **median** offset across all successfully-reached sources to correct the displayed time — so one slow or wrong API can't skew the result.
@@ -95,6 +111,11 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 </details>
 
 ## Changelog
+
+### 2026-08-10
+
+- Bumped Android to `versionCode 5` / `versionName "1.4"` for the signed release build, to pick up the photorealistic globe below (v1.3 predates it).
+- Expanded the README with a dedicated "The globe" section covering the new rendering pipeline in more depth, plus night-side city-lights and Nightstand mode screenshots.
 
 ### 2026-08-09
 
