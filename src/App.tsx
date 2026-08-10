@@ -92,7 +92,6 @@ export default function App() {
       () => setGeoStatus('denied'),
       { timeout: 8000 },
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Keep the URL in sync with the current selection so it can be copied/shared.
