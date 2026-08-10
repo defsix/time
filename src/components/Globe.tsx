@@ -39,19 +39,19 @@ interface GlobeProps {
   autoRotateSpeed?: number
 }
 
-// Colors for the wireframe overlay (graticule, time-zone meridians, country
-// borders). These sit on top of the globe's own day/night shading, which is
-// always the same regardless of the page's light/dark theme, so the overlay
-// colors are fixed too — tuned to stay visible against both the bright day
-// side and the near-black night side.
+// Colors for the line overlay (graticule, time-zone meridians, country
+// borders) drawn on top of the photoreal earth surface. These are always the
+// same regardless of the page's light/dark theme, so the overlay colors are
+// fixed too — tuned to stay visible without overpowering the satellite
+// texture underneath. Kept lighter than the old flat-color wireframe globe
+// now that there's real imagery to compete with.
 const GRATICULE_COLOR = 0xcdeeff
-const GRATICULE_OPACITY = 0.28
+const GRATICULE_OPACITY = 0.14
 const MERIDIAN_COLOR = 0x6fdcff
-const MERIDIAN_OPACITY = 0.6
+const MERIDIAN_OPACITY = 0.55
 const COUNTRY_BORDER_COLOR = 0xf3fbff
-const COUNTRY_BORDER_OPACITY = 0.8
-const SHELL_COLOR = 0xcdeeff
-const SHELL_OPACITY = 0.09
+const COUNTRY_BORDER_OPACITY = 0.5
+const TEXTURE_BASE = `${import.meta.env.BASE_URL}textures/earth`
 
 
 export default function Globe({
@@ -166,39 +166,167 @@ export default function Globe({
       resetIdleTimers()
     })
 
-    // Day/night shaded core sphere, with a warm terminator glow at the day/night line.
-    // The normal is computed in WORLD space (mat3(modelMatrix)), not view space
-    // (Three.js's built-in normalMatrix), so the terminator stays fixed to the
-    // actual geography as the camera orbits, instead of rotating with the camera.
+    // Photoreal earth core: day satellite imagery blended against real city
+    // lights on the night side, with GPU terrain-relief shading (a tangent-space
+    // normal map perturbing the lighting normal) and an ocean specular highlight
+    // masked by a land/water map. Sphere UVs from THREE.SphereGeometry line up
+    // exactly with latLonToVector3's convention (u=0 at lon=-180, v=0 at the
+    // north pole), so the equirectangular textures need no remapping to align
+    // with the markers/graticule/borders below.
+    // The day/night terminator itself is computed from the *unperturbed* world
+    // normal (mat3(modelMatrix), not Three.js's view-space normalMatrix) so it
+    // stays fixed to real geography as the camera orbits, and stays a clean
+    // smooth line rather than being speckled by the terrain bump.
+    const textureLoader = new THREE.TextureLoader()
+    const dayMap = textureLoader.load(`${TEXTURE_BASE}/earth_atmos_2048.jpg`)
+    dayMap.colorSpace = THREE.SRGBColorSpace
+    const nightMap = textureLoader.load(`${TEXTURE_BASE}/earth_lights_2048.jpg`)
+    nightMap.colorSpace = THREE.SRGBColorSpace
+    const specularMap = textureLoader.load(`${TEXTURE_BASE}/earth_specular_2048.jpg`)
+    const normalMap = textureLoader.load(`${TEXTURE_BASE}/earth_normal_2048.jpg`)
+    const maxAnisotropy = renderer.capabilities.getMaxAnisotropy()
+    ;[dayMap, nightMap, specularMap, normalMap].forEach((tex) => {
+      tex.anisotropy = maxAnisotropy
+    })
+
     const sunDirUniform = { value: new THREE.Vector3(1, 0, 0) }
+    const cameraWorldPosUniform = { value: new THREE.Vector3() }
     const coreMaterial = new THREE.ShaderMaterial({
       uniforms: {
         sunDirection: sunDirUniform,
-        dayColor: { value: new THREE.Color(0x1c6f9c) },
-        nightColor: { value: new THREE.Color(0x020610) },
+        cameraWorldPos: cameraWorldPosUniform,
+        dayMap: { value: dayMap },
+        nightMap: { value: nightMap },
+        specularMap: { value: specularMap },
+        normalMap: { value: normalMap },
       },
       vertexShader: `
         varying vec3 vWorldNormal;
+        varying vec3 vWorldPosition;
+        varying vec2 vUv;
         void main() {
+          vUv = uv;
           vWorldNormal = normalize(mat3(modelMatrix) * normal);
+          vec4 worldPos = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPos.xyz;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: `
+        uniform sampler2D dayMap;
+        uniform sampler2D nightMap;
+        uniform sampler2D specularMap;
+        uniform sampler2D normalMap;
         uniform vec3 sunDirection;
-        uniform vec3 dayColor;
-        uniform vec3 nightColor;
+        uniform vec3 cameraWorldPos;
         varying vec3 vWorldNormal;
+        varying vec3 vWorldPosition;
+        varying vec2 vUv;
+
+        // Reconstructs a tangent-space basis from screen-space derivatives (no
+        // precomputed vertex tangents needed) to apply the normal map.
+        mat3 cotangentFrame(vec3 N, vec3 p, vec2 uv) {
+          vec3 dp1 = dFdx(p);
+          vec3 dp2 = dFdy(p);
+          vec2 duv1 = dFdx(uv);
+          vec2 duv2 = dFdy(uv);
+          vec3 dp2perp = cross(dp2, N);
+          vec3 dp1perp = cross(N, dp1);
+          vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+          vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+          float invmax = inversesqrt(max(dot(T, T), dot(B, B)));
+          return mat3(T * invmax, B * invmax, N);
+        }
+
         void main() {
-          float intensity = dot(normalize(vWorldNormal), normalize(sunDirection));
-          float dayMix = smoothstep(-0.12, 0.12, intensity);
-          vec3 base = mix(nightColor, dayColor, dayMix);
-          gl_FragColor = vec4(base, 1.0);
+          vec3 N = normalize(vWorldNormal);
+          vec3 sun = normalize(sunDirection);
+
+          vec3 mapN = texture2D(normalMap, vUv).xyz * 2.0 - 1.0;
+          mapN.xy *= 0.9;
+          mat3 TBN = cotangentFrame(N, -vWorldPosition, vUv);
+          vec3 reliefNormal = normalize(TBN * mapN);
+
+          // Terminator uses the clean, unperturbed normal so the day/night line
+          // stays smooth and geographically accurate. Terrain relief is only a
+          // small bounded correction on top of that stable base — the screen-space
+          // TBN reconstruction used for the normal map gets unreliable near the
+          // sphere's silhouette (grazing view angles), so it must never be allowed
+          // to swing brightness on its own or it darkens a much wider band than
+          // the real terminator whenever that happens to sit near the limb.
+          float dayMix = smoothstep(-0.15, 0.15, dot(N, sun));
+          float baseLight = max(dot(N, sun), 0.0);
+          float reliefDelta = clamp(dot(reliefNormal, sun) - dot(N, sun), -0.18, 0.18);
+          float diffuse = clamp(baseLight + reliefDelta, 0.0, 1.0);
+
+          // Floor stays high so the whole day hemisphere reads clearly bright
+          // (matching the old flat-color day/night look) — relief shading only
+          // adds subtle depth on top, it doesn't darken the globe toward dusk.
+          vec3 dayColor = texture2D(dayMap, vUv).rgb * (0.72 + 0.34 * diffuse) * 1.12;
+
+          vec3 viewDir = normalize(cameraWorldPos - vWorldPosition);
+          vec3 halfDir = normalize(sun + viewDir);
+          float specMask = texture2D(specularMap, vUv).r;
+          // Fade out near the limb too, for the same TBN-reliability reason.
+          float specFade = smoothstep(0.05, 0.3, dot(N, viewDir));
+          float spec = pow(max(dot(reliefNormal, halfDir), 0.0), 28.0) * specMask * 0.9 * specFade;
+
+          vec3 nightColor = texture2D(nightMap, vUv).rgb * 1.6;
+
+          vec3 color = mix(nightColor, dayColor + vec3(spec) * dayMix, dayMix);
+          // Gentle gamma lift: the source imagery is true-color NASA satellite
+          // data (oceans render as deep navy even at local noon), which reads
+          // as muddy/muted for a glanceable UI — this brightens shadows and
+          // midtones a bit for a more vivid, polished look without blowing out
+          // the highlights.
+          color = pow(color, vec3(0.82));
+          gl_FragColor = vec4(color, 1.0);
         }
       `,
     })
-    const core = new THREE.Mesh(new THREE.SphereGeometry(RADIUS * 0.985, 64, 48), coreMaterial)
+    const core = new THREE.Mesh(new THREE.SphereGeometry(RADIUS * 0.985, 96, 72), coreMaterial)
     scene.add(core)
+
+    // Thin cloud layer, drifting slowly and independently of the (camera-driven)
+    // globe orientation for a "living planet" feel. Lit by a real directional
+    // light (see sunLight below) rather than the core's hand-rolled shader.
+    const cloudsMap = textureLoader.load(`${TEXTURE_BASE}/earth_clouds_1024.png`)
+    cloudsMap.colorSpace = THREE.SRGBColorSpace
+    const cloudsMaterial = new THREE.MeshLambertMaterial({
+      map: cloudsMap,
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false,
+    })
+    const clouds = new THREE.Mesh(new THREE.SphereGeometry(RADIUS * 1.008, 64, 48), cloudsMaterial)
+    scene.add(clouds)
+
+    // Fresnel atmosphere glow: a backside-rendered, additively-blended shell
+    // that brightens toward the limb (view-dependent, hence view-space
+    // normalMatrix here — unlike the core's terminator, this should rotate
+    // with the camera).
+    const atmosphereMaterial = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
+          gl_FragColor = vec4(0.35, 0.65, 1.0, 1.0) * clamp(intensity, 0.0, 1.0);
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+      transparent: true,
+      depthWrite: false,
+    })
+    const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(RADIUS * 1.12, 64, 48), atmosphereMaterial)
+    scene.add(atmosphere)
 
     // Graticule (lat/lon grid lines)
     const graticuleGroup = new THREE.Group()
@@ -242,16 +370,6 @@ export default function Globe({
       opacity: COUNTRY_BORDER_OPACITY,
     })
     scene.add(new THREE.LineSegments(countryGeo, countryMat))
-
-    // Outer faint wireframe shell for a "globe of wire" silhouette
-    const shellGeo = new THREE.SphereGeometry(RADIUS * 1.002, 24, 16)
-    const shellMat = new THREE.MeshBasicMaterial({
-      color: SHELL_COLOR,
-      wireframe: true,
-      transparent: true,
-      opacity: SHELL_OPACITY,
-    })
-    scene.add(new THREE.Mesh(shellGeo, shellMat))
 
     // Invisible hit-sphere for raycasting arbitrary click points
     const hitSphere = new THREE.Mesh(
@@ -361,7 +479,12 @@ export default function Globe({
       target.geometry.setFromPoints(target.points)
     }
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
+    // Dim ambient keeps night-side clouds faintly visible instead of pure
+    // black; the directional light (repositioned to the live sun direction
+    // every frame in animate() below) is what actually shades the clouds.
+    scene.add(new THREE.AmbientLight(0xffffff, 0.22))
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.3)
+    scene.add(sunLight)
 
     // Camera fly-to: animate along the great-circle arc (not a straight lerp,
     // which would cut through the globe) so the target ends up facing the
@@ -509,6 +632,9 @@ export default function Globe({
       const sun = subSolarPoint(now)
       const sunVec = latLonToVector3(sun.lat, sun.lon, 1)
       sunDirUniform.value.copy(sunVec)
+      cameraWorldPosUniform.value.copy(camera.position)
+      sunLight.position.copy(sunVec).multiplyScalar(20)
+      clouds.rotation.y += 0.0004
       sunMarker.position.copy(latLonToVector3(sun.lat, sun.lon, SUN_ORBIT_RADIUS))
       updateOrbitRing(sunRing, sun.lat, SUN_ORBIT_RADIUS)
 
@@ -561,6 +687,13 @@ export default function Globe({
       renderer.domElement.removeEventListener('pointermove', handlePointerMove)
       renderer.domElement.removeEventListener('wheel', handleWheel)
       controls.dispose()
+      ;[dayMap, nightMap, specularMap, normalMap, cloudsMap].forEach((tex) => tex.dispose())
+      core.geometry.dispose()
+      coreMaterial.dispose()
+      clouds.geometry.dispose()
+      cloudsMaterial.dispose()
+      atmosphere.geometry.dispose()
+      atmosphereMaterial.dispose()
       renderer.dispose()
       mount.removeChild(renderer.domElement)
       mount.removeChild(labelEl)

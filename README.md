@@ -1,6 +1,6 @@
 # World Time
 
-A live world clock with a wireframe 3D globe — click any city to see its time, watch real day/night move across the Earth, and cross-check the displayed time against several independent public time sources.
+A live world clock with a photorealistic 3D globe — click any city to see its time, watch real day/night move across the Earth, and cross-check the displayed time against several independent public time sources.
 
 **Live site:** https://defsix.github.io/time/
 
@@ -8,7 +8,7 @@ A live world clock with a wireframe 3D globe — click any city to see its time,
 
 ## What it does
 
-- **Wireframe globe.** A Three.js globe with a lat/lon graticule, country border outlines, and a real day/night terminator computed from the actual subsolar point — a soft graduated fade from day into night that tracks the real sun as the globe rotates.
+- **Photorealistic globe.** A Three.js globe rendered with real satellite imagery, GPU terrain-relief shading, an ocean specular highlight, drifting clouds, and city lights on the night side — plus a lat/lon graticule and country border outlines, and a real day/night terminator computed from the actual subsolar point that tracks the real sun as the globe rotates.
 - **Live sun & moon markers.** Small markers orbiting the globe show where the sun and moon are actually overhead right now, each trailed by a thin ring tracing the path it sweeps as the day (or lunar day) progresses — real right ascension/declination math (a Meeus low-precision lunar position series for the moon), not just a decorative motif.
 - **~250 clickable cities**, plus a search box covering roughly 7,300 more. Click or tap near a marker (a generous invisible hit area makes this easy on touchscreens) to fly the camera there and see its local time.
 - **Nearest-city default.** On load, if you allow location access, the app finds and flies to your nearest known city automatically.
@@ -36,7 +36,7 @@ Note: real NTP servers (`pool.ntp.org`, `time.windows.com`, etc.) are deliberate
 ## Tech stack
 
 - [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/), built with [Vite](https://vite.dev/)
-- [Three.js](https://threejs.org/) for the globe (custom shader for the day/night terminator, hand-derived great-circle camera animation, world-atlas country border data)
+- [Three.js](https://threejs.org/) for the globe (custom shader for the photoreal day/night terminator, terrain relief and ocean specular, hand-derived great-circle camera animation, world-atlas country border data). Earth/cloud textures are the same NASA-sourced imagery bundled with three.js's own official examples.
 - No backend — a static site deployed to [GitHub Pages](https://pages.github.com/) via GitHub Actions
 - `city-timezones` (bundled, code-split) for the ~7,300-city search index
 
@@ -95,6 +95,10 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 </details>
 
 ## Changelog
+
+### 2026-08-09
+
+- **Upgraded the globe from flat wireframe shading to a photorealistic Earth.** Real day-side satellite imagery, GPU terrain-relief shading (a tangent-space normal map lighting mountain ranges), an ocean specular highlight, drifting clouds, and real city lights on the night side — the day/night terminator itself is unchanged (still the actual astronomical subsolar point), but everything it shades now looks like a real planet instead of a flat-colored sphere. The lat/lon graticule, time-zone meridians, and country border overlay are all still there, just dialed back slightly so they read as an overlay on real imagery rather than a wireframe. The old faint outer wireframe "shell" is replaced by a proper Fresnel atmosphere glow.
 
 ### 2026-08-05
 
