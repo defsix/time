@@ -12,7 +12,7 @@ export function latLonToVector3(lat: number, lon: number, radius: number): THREE
 export function vector3ToLatLon(v: THREE.Vector3, radius: number): { lat: number; lon: number } {
   const normalized = v.clone().normalize().multiplyScalar(radius)
   const phi = Math.acos(THREE.MathUtils.clamp(normalized.y / radius, -1, 1))
-  let theta = Math.atan2(normalized.z, -normalized.x)
+  const theta = Math.atan2(normalized.z, -normalized.x)
   const lat = 90 - phi * (180 / Math.PI)
   let lon = theta * (180 / Math.PI) - 180
   if (lon < -180) lon += 360
