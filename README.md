@@ -112,6 +112,10 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 
 ## Changelog
 
+### 2026-08-19
+
+- Added an MIT `LICENSE` (root, `android/`, `ios/`) and set `"license": "MIT"` in `package.json` so license-detection tooling picks it up.
+
 ### 2026-08-10
 
 - Bumped Android to `versionCode 5` / `versionName "1.4"` for the signed release build, to pick up the photorealistic globe below (v1.3 predates it).
