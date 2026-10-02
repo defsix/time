@@ -2,6 +2,29 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 9: privacy policy accuracy (backups kept on)
+
+**Problem.** `public/privacy.html` said "no storage" (the app stores theme,
+12/24 h and pinned cities in local storage) and that nothing about an alarm
+"leaves your device" — but Android's `allowBackup="true"` (and iCloud Backup
+on iOS) can include that data in the OS's own device backup.
+
+**Decision (repo owner).** Keep backups on — users keep their pins/alarms on
+a new phone — and make the policy say so.
+
+**Change.**
+- Summary no longer claims "no storage"; new *What's stored on your device*
+  section listing exactly what's kept, how to delete it, and a *Device
+  backups* note (handled by Google/Apple under the user's account, never
+  sent to or readable by World Time).
+- Location section: the nearest city isn't put in the page address; it's
+  only in a link if the user chooses *Copy link* (true since step 8).
+- Time sync section names the three services and the 90 s interval.
+- Last-updated date bumped; manifest comment records why backup stays on.
+
+**Verified.** Tags balanced; wording reviewed against the code paths
+(storage keys, Copy link, sync interval).
+
 ## 2026-10-02 — Step 8: share URL leaking the geolocated city; geolocation overriding the user
 
 **Problem.**
