@@ -168,9 +168,29 @@ Signing is optional and never committed:
 `app/build.gradle.kts` (must increase, or Android refuses to update over an
 existing install), commit, then `git tag v1.0 && git push --tags`. CI builds
 the signed APK and publishes it — plus a `.sha256` checksum — to a GitHub
-Release matching the tag. This coexists with the rolling
-`android-debug-latest` prerelease (unsigned debug build from every push to
-`main`); the tagged release is the one that shows up as "Latest".
+Release matching the tag, together with a GitHub build-provenance
+attestation. Anyone can check a downloaded APK really came from this
+repository's CI with `gh attestation verify world-time-v1.4.apk -R defsix/time`
+(the `.sha256` only catches a corrupted download: it sits next to the APK,
+so it can't catch tampering). This coexists with the rolling
+`android-debug-latest` prerelease (debug build from every push to `main`);
+the tagged release is the one that shows up as "Latest".
+
+**Stable debug signing (optional).** Without it, every CI run signs the
+rolling debug build with a freshly generated debug key, so a new debug build
+won't install over the previous one (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`;
+uninstalling first loses alarms and pins). To fix that, create a debug-only
+keystore once — Android's standard debug credentials, it's the file itself
+that's secret — and add it as the `ANDROID_DEBUG_KEYSTORE_BASE64` secret:
+
+```bash
+keytool -genkeypair -keystore world-time-debug.jks -storepass android -keypass android \
+  -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=World Time Debug"
+base64 -w0 world-time-debug.jks   # paste the output into the secret
+```
+
+The `sign-debug` job then re-signs each rolling debug build with it (the
+first build signed this way still needs one uninstall).
 
 A [privacy policy](../public/privacy.html) is also published at
 `https://defsix.github.io/time/privacy.html`.

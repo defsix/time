@@ -2,6 +2,53 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 17: CI / release maintenance
+
+**Problems.**
+- Rolling debug APKs: **confirmed** each CI run signs with a new key —
+  downloaded the debug artifacts of runs #57 and #59: certificate SHA-256
+  `534caa00…` vs `e4eb2627…`. So `adb install -r` (as the release notes
+  say) fails and users must uninstall, losing alarms/pins.
+- The `.sha256` published next to the release APK was described as a
+  tamper check; it can only catch corruption.
+- Workflows on Node 20 (EOL April 2026); Pages build job held `pages: write`
+  and `id-token: write`; iOS/Pages workflows' actions tag-pinned; Gradle
+  wrapper without `distributionSha256Sum`; no tests or lint in CI; two
+  dev-only npm advisories.
+
+**Decision (repo owner).** Stable debug signing via a dedicated, debug-only
+secret key.
+
+**Change.**
+- `android-build.yml`: new `sign-debug` job (no checkout, no third-party
+  actions) re-signs the debug APK with `ANDROID_DEBUG_KEYSTORE_BASE64`, or
+  passes it through with a warning if the secret isn't set;
+  `publish-release` adds an `actions/attest` build-provenance attestation
+  and honest notes (`gh attestation verify …`; `.sha256` = corruption only).
+- New `web-checks.yml` (PRs: lint, test, build); `deploy-pages.yml` runs lint
+  and tests before deploying, with Pages write/OIDC only in the deploy job;
+  `ios-build.yml` read-only token. All actions SHA-pinned; Node 24
+  everywhere; `persist-credentials: false` on checkouts.
+- `.github/dependabot.yml`: monthly grouped updates for the pinned actions
+  (major-version bumps then arrive as CI-tested PRs rather than blind edits).
+- Gradle wrapper `distributionSha256Sum`; `npm audit fix` (lockfile only).
+- Docs: Android README (verification, stable debug key setup), root README
+  (verification, test/lint commands, changelog entry per CLAUDE.md).
+
+**Verified.**
+- `actionlint` + shellcheck: all workflows clean; no tag-pinned actions left.
+- Dry runs: `sign-debug` with a test key → single signer, v2-verified (also
+  tested re-signing a real CI debug APK); without the secret → byte-identical
+  pass-through + warning; release and debug notes render with the repo name.
+- Gradle wrapper with a fresh `GRADLE_USER_HOME` downloads and verifies 8.7
+  against the new checksum.
+- Node 24: lint, 34/34 tests, build. `npm audit` → 0 vulnerabilities.
+**Not verified.** A real Actions run of the new jobs, the attestation step
+and the Pages deploy (they need a PR / push to `main` / tag).
+**Owner actions.** Add `ANDROID_DEBUG_KEYSTORE_BASE64` (commands in
+`android/README.md`); optionally move release secrets to the
+`android-release` environment (step 1).
+
 ## 2026-10-02 — Step 16: time sync paused in the background
 
 **Problem.** The 90 s re-check (three third-party requests) kept running in

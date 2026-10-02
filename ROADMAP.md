@@ -31,7 +31,7 @@ order of priority. Details of each completed step are in
 
 ## CI / release
 
-- [ ] 17. Debug-APK key consistency, signing-cert fingerprint, Node 20 EOL + action majors, wrapper checksum, Pages permissions, dev-dep audit, tests in CI
+- [x] 17. Debug-APK key consistency, signing-cert fingerprint, Node 20 EOL + action majors, wrapper checksum, Pages permissions, dev-dep audit, tests in CI
 
 ## Follow-ups (outside this pass)
 

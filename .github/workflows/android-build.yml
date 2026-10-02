@@ -59,7 +59,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
@@ -92,18 +92,64 @@ jobs:
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
+  # Re-signs the rolling debug APK with a stable, debug-only key (secret
+  # ANDROID_DEBUG_KEYSTORE_BASE64 — see android/README.md) so each build
+  # installs over the previous one. Otherwise every CI run signs with its
+  # own freshly generated debug key and upgrades fail with
+  # INSTALL_FAILED_UPDATE_INCOMPATIBLE. Same isolation as sign-release: no
+  # checkout, no third-party actions. Without the secret the APK passes
+  # through unchanged.
+  sign-debug:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: world-time-debug-apk
+          path: unsigned
+
+      - name: Sign debug APK with the stable debug key
+        env:
+          ANDROID_DEBUG_KEYSTORE_BASE64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          mkdir -p signed
+          if [ -z "$ANDROID_DEBUG_KEYSTORE_BASE64" ]; then
+            echo "::warning::ANDROID_DEBUG_KEYSTORE_BASE64 is not set — publishing the debug APK signed with this run's throwaway key, so it won't install over the previous build (see android/README.md)."
+            cp unsigned/app-debug.apk signed/
+            exit 0
+          fi
+          build_tools="$ANDROID_HOME/build-tools/$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort -V | tail -n 1)"
+          keystore="$RUNNER_TEMP/debug.jks"
+          trap 'rm -f "$keystore"' EXIT
+          echo "$ANDROID_DEBUG_KEYSTORE_BASE64" | base64 -d > "$keystore"
+          # Android's standard debug-key credentials; the keystore itself is the secret.
+          "$build_tools/zipalign" -f -p 4 unsigned/app-debug.apk "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" sign \
+            --ks "$keystore" --ks-pass pass:android \
+            --ks-key-alias androiddebugkey --key-pass pass:android \
+            --v4-signing-enabled false \
+            --out signed/app-debug.apk "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" verify --print-certs signed/app-debug.apk
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: world-time-debug-apk-signed
+          path: signed/app-debug.apk
+          if-no-files-found: error
+
   # Gives a stable URL that always points at the newest build from main,
   # instead of a per-run artifact link that expires after ~90 days.
   publish-debug:
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: sign-debug
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: world-time-debug-apk
+          name: world-time-debug-apk-signed
 
       - name: Publish to the rolling "latest" release
         env:
@@ -114,7 +160,9 @@ jobs:
           Automatically rebuilt and replaced on every push to \`main\`
           (currently commit $GITHUB_SHA). This is a **debug build,
           not signed for distribution** — install directly, e.g.
-          \`adb install -r app-debug.apk\`.
+          \`adb install -r app-debug.apk\` (if that fails with
+          INSTALL_FAILED_UPDATE_INCOMPATIBLE, uninstall the previous debug
+          build first).
           EOF
           )
           if gh release view android-debug-latest >/dev/null 2>&1; then
@@ -187,11 +235,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write # Sigstore signing certificate for the attestation
+      attestations: write
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: world-time-release-apk
           path: signed
+
+      # Build-provenance attestation: a Sigstore-signed statement, stored by
+      # GitHub rather than on the release page, that this exact APK came out
+      # of this workflow run on this commit. Unlike the .sha256 next to the
+      # APK, someone who could replace the APK can't forge it. Verify with
+      # `gh attestation verify <apk> -R <owner>/<repo>`.
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: signed/*.apk
 
       - name: Publish signed release APK to GitHub Release
         env:
@@ -200,14 +259,20 @@ jobs:
         run: |
           notes=$(cat <<'EOF'
           Signed release build (not the debug build above) — this is the
-          one to install. Sideload it directly, and optionally verify it
-          wasn't corrupted/tampered with first:
+          one to install. Before sideloading, you can check it really was
+          built by this repository's CI from the tagged commit (needs the
+          GitHub CLI):
 
           ```
-          sha256sum -c world-time-v*.apk.sha256
+          gh attestation verify world-time-v*.apk -R @REPO@
           ```
+
+          The `.sha256` file only detects a corrupted download
+          (`sha256sum -c world-time-v*.apk.sha256`) — it can't detect
+          tampering, since it sits right next to the APK.
           EOF
           )
+          notes=${notes//@REPO@/$GITHUB_REPOSITORY}
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" signed/* --clobber
           else
