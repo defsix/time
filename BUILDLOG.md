@@ -2,6 +2,23 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — PR #42 CI: Android build failed at SDK setup
+
+**Problem.** `android-build` → `build` failed in `android-actions/setup-android`
+before any build step: its v3 default `packages: tools platform-tools` asks
+for `tools`, which Google no longer serves (`Warning: Failed to find package
+'tools'`, exit 1) on the runner's current SDK tools. `@v3` (what `main` uses)
+is the same commit as the pinned v3.2.2, so `main` would fail the same way;
+the runner image changed, not this PR's logic.
+
+**Change.** Pin `setup-android` to v4.0.4 (`be39fa8…`), whose default is
+`platform-tools` only and which runs on Node 24.
+
+**Verified.** Reproduced locally: `sdkmanager tools` → same warning, exit 1;
+`sdkmanager platform-tools` → exit 0. `actionlint` clean. In the same CI run,
+`web-checks` and `ios-build` passed — the first real Xcode compile of the
+iOS changes.
+
 ## 2026-10-02 — Step 17: CI / release maintenance
 
 **Problems.**
