@@ -21,7 +21,7 @@ order of priority. Details of each completed step are in
 
 ## Bugs
 
-- [ ] 10. Android alarms silently lost (force-stop / permission revoked / direct boot)
+- [x] 10. Android alarms silently lost (force-stop / permission revoked / direct boot)
 - [ ] 11. Android ringing screen: Back leaves a stuck notification, second alarm ignored, rings forever
 - [ ] 12. iOS: fired alarms never leave the list; scheduling errors ignored; JS string escaping
 - [ ] 13. iOS alarms are ordinary notifications — decide on AlarmKit (iOS 26+)

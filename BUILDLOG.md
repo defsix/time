@@ -2,6 +2,38 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 10: Android alarms silently lost
+
+**Problem.**
+- A force-stop, or revoking "Alarms & reminders" access, cancels every
+  AlarmManager alarm without telling the app; the store kept them, but
+  nothing re-armed them until the next reboot.
+- Granting exact-alarm access later left existing alarms on their inexact
+  window.
+- `BootReceiver` wasn't direct-boot aware: after an overnight reboot (e.g.
+  an OS update) alarms weren't re-armed until the first unlock — and the
+  store lived in credential-encrypted storage, unreadable before it.
+- `AlarmStore` locked per *instance*, but every component creates its own,
+  so concurrent read-modify-write updates could drop an alarm.
+
+**Change.**
+- `AlarmScheduler.rescheduleAll`: re-arms future alarms, drops past ones;
+  idempotent (an alarm's PendingIntent replaces itself). Called on boot,
+  on `ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED` (upgrades
+  inexact → exact) and on every `MainActivity` launch.
+- `BootReceiver`, `AlarmReceiver`, `AlarmRingActivity` marked
+  `directBootAware`; `BootReceiver` also handles `LOCKED_BOOT_COMPLETED`.
+- `AlarmStore` uses device-protected storage, migrating the old file once
+  the user is unlocked (`moveSharedPreferencesFrom`); one process-wide lock.
+- Android README updated.
+
+**Verified.** `compileDebugKotlin` OK. `lintDebug`: no findings from these
+changes. It did surface two **pre-existing errors** — `AlarmRingActivity`
+calls `setShowWhenLocked`/`setTurnScreenOn` (API 27) with `minSdk 26`, i.e.
+the ringing screen crashes on Android 8.0 — queued for step 11.
+**Not verified.** On-device: reboot-without-unlock, force-stop → relaunch,
+and granting exact-alarm access with an inexact alarm pending.
+
 ## 2026-10-02 — Step 9: privacy policy accuracy (backups kept on)
 
 **Problem.** `public/privacy.html` said "no storage" (the app stores theme,

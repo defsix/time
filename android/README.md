@@ -67,8 +67,12 @@ of narrow screens.
     otherwise — per Android 14's guidance for apps that don't have that
     permission.
   - `AlarmStore.kt` persists the alarm list (AlarmManager can't be
-    enumerated), which `BootReceiver.kt` reads to reschedule everything
-    after a reboot (raw alarms don't survive one).
+    enumerated) in device-protected storage. `AlarmScheduler.rescheduleAll`
+    re-arms every future alarm from it: on boot (`BootReceiver.kt`, which is
+    direct-boot aware, so alarms ring even before the first unlock after an
+    overnight reboot), when exact-alarm access is granted, and on every app
+    launch — a force-stop or revoked "Alarms & reminders" access silently
+    cancels all of an app's alarms.
   - `AlarmReceiver.kt` posts a full-screen-intent notification when the
     alarm fires; `AlarmRingActivity.kt` is the actual ringing screen
     (shows over the lock screen, loops the default alarm sound, vibrates,

@@ -49,6 +49,26 @@ object AlarmScheduler {
         }
     }
 
+    /**
+     * Re-arms every stored alarm that's still in the future and drops the
+     * ones whose time passed (one-shot alarms aren't fired late). Needed
+     * after a reboot, when exact-alarm access is granted (to upgrade inexact
+     * alarms), and on every app launch: a force-stop or revoking "Alarms &
+     * reminders" cancels all of an app's alarms without telling it.
+     * Idempotent — an alarm's PendingIntent simply replaces itself.
+     */
+    fun rescheduleAll(context: Context) {
+        val store = AlarmStore(context)
+        val now = System.currentTimeMillis()
+        for (alarm in store.getAll()) {
+            if (alarm.epochMillis <= now) {
+                store.remove(alarm.id)
+            } else {
+                schedule(context, alarm)
+            }
+        }
+    }
+
     fun cancel(context: Context, alarmId: String) {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
         alarmManager.cancel(pendingIntentFor(context, alarmId))

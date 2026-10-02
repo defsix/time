@@ -25,6 +25,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import io.defsix.time.alarm.AlarmBridge
+import io.defsix.time.alarm.AlarmScheduler
 
 /**
  * Hosts the existing World Time web app (Three.js globe, city search, time
@@ -81,6 +82,11 @@ class MainActivity : AppCompatActivity() {
         // CSS custom properties below.
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
+        // A force-stop or revoked "Alarms & reminders" access silently
+        // cancels every scheduled alarm, and nothing re-arms them until the
+        // next reboot — so do it whenever the app is opened.
+        AlarmScheduler.rescheduleAll(this)
 
         assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", AssetsPathHandler(this))
