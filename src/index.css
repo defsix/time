@@ -61,3 +61,35 @@ body {
   color: var(--text);
   transition: background 0.2s ease, color 0.2s ease;
 }
+
+/* Fallback screen from ErrorBoundary — kept here (not App.css) and self-
+   contained, since it has to render even when App itself has crashed. */
+.error-boundary {
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: calc(4rem + var(--safe-area-top)) 1rem 2rem;
+  text-align: center;
+}
+
+.error-boundary h1 {
+  font-size: 1.3rem;
+}
+
+.error-boundary p {
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.error-boundary button {
+  background: var(--panel-hover);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  padding: 0.5rem 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.error-boundary button:hover {
+  border-color: var(--accent-selection);
+}

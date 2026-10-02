@@ -13,6 +13,11 @@ export const zh: Translations = {
     footer:
       '使用 Three.js 构建。时间与 TimeAPI.io、Binance 的时钟同步接口以及一个兼容 WorldTimeAPI 的 HTTP 时间服务（time.now）进行交叉校验——各来源的实时技术详情请参见“时间来源”面板。日出、日落和月相均在本地根据标准的日月运行公式计算得出。',
   },
+  errorBoundary: {
+    title: '出了点问题',
+    body: '页面遇到意外错误。重新开始通常可以解决。',
+    startOver: '重新开始',
+  },
   globe: {
     sun: '太阳',
     moon: '月亮',

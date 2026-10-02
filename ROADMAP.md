@@ -9,7 +9,7 @@ order of priority. Details of each completed step are in
 - [x] 1. Isolate the Android release signing key in CI (build / sign / publish jobs, SHA-pinned actions, Gradle wrapper validation)
 - [x] 2. Android location permission broken on Android 12+ (FINE requested without COARSE)
 - [x] 3. Alarms fire an hour early/late on DST-transition days (`alarmTime.ts`) + add unit tests
-- [ ] 4. Crafted share link (`?tz=`) blanks the page — validate params, add an error boundary
+- [x] 4. Crafted share link (`?tz=`) blanks the page — validate params, add an error boundary (+ blocked-storage crash, stored-pin validation)
 - [ ] 5. Malformed time-API payload (NaN offset) blanks the page
 
 ## Security (latent / lower)

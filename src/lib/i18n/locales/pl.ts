@@ -14,6 +14,11 @@ export const pl: Translations = {
     footer:
       'Stworzone przy użyciu Three.js. Czas jest porównywany z TimeAPI.io, punktem synchronizacji zegara Binance oraz usługą HTTP zgodną z WorldTimeAPI (time.now) — szczegóły techniczne na żywo dla każdego źródła znajdziesz w panelu Źródła czasu. Wschód i zachód słońca oraz faza księżyca są obliczane lokalnie na podstawie standardowych wzorów słonecznych/księżycowych.',
   },
+  errorBoundary: {
+    title: 'Coś poszło nie tak',
+    body: 'Na stronie wystąpił nieoczekiwany błąd. Zwykle pomaga rozpoczęcie od nowa.',
+    startOver: 'Zacznij od nowa',
+  },
   globe: {
     sun: 'Słońce',
     moon: 'Księżyc',

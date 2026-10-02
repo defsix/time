@@ -14,6 +14,11 @@ export interface Translations {
     geoUnsupported: string
     footer: string
   }
+  errorBoundary: {
+    title: string
+    body: string
+    startOver: string
+  }
   globe: {
     sun: string
     moon: string

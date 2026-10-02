@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { readStorage, writeStorage } from './storage'
 
 export type HourFormatChoice = '12h' | '24h' | 'system'
 
@@ -9,7 +10,7 @@ function systemPrefersHour12(): boolean {
 }
 
 function readStoredChoice(): HourFormatChoice {
-  const stored = localStorage.getItem(STORAGE_KEY)
+  const stored = readStorage(STORAGE_KEY)
   return stored === '12h' || stored === '24h' || stored === 'system' ? stored : 'system'
 }
 
@@ -19,7 +20,7 @@ export function useHourFormat() {
   const hour12 = choice === 'system' ? systemPrefersHour12() : choice === '12h'
 
   const setChoice = useCallback((next: HourFormatChoice) => {
-    localStorage.setItem(STORAGE_KEY, next)
+    writeStorage(STORAGE_KEY, next)
     setChoiceState(next)
   }, [])
 

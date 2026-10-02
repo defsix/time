@@ -2,6 +2,40 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 4: crafted share links (and blocked storage) blanking the page
+
+**Problem.** `?tz=Foo/Bar` reached `Intl.DateTimeFormat` during render,
+which throws; with no error boundary React unmounted everything → blank page,
+and reloading the same URL crashed again. While fixing it I found the same
+class of crash in the settings hooks: `localStorage` *throws* (rather than
+returning null) when the browser blocks site storage (e.g. Chrome's "Block
+all cookies"), and `useTheme`/`useHourFormat` read it unguarded during
+render. Stored pinned cities were also trusted as-is.
+
+**Change.**
+- `shareLink.ts`: new `parseShareParams` — rejects non-finite or
+  out-of-range lat/lon, drops unknown time zones (link degrades to a point
+  selection), trims/caps `name`/`country` at 100 chars.
+- `timeZone.ts`: `isValidTimeZone` helper.
+- `storage.ts`: `readStorage`/`writeStorage` that swallow storage errors;
+  used by the theme, hour-format and pinned-cities hooks.
+- `usePinnedCities.ts`: `parseStoredPinned` drops malformed entries
+  (bad shape, unknown zone) and caps at the pin limit.
+- `ErrorBoundary.tsx` wraps `<App>`: translated "Something went wrong" screen
+  with **Start over**, which reloads *without* the query string. Strings
+  added to all 10 locales; styles in `index.css` so they load even when
+  `App` itself crashed.
+- Tests: `shareLink.test.ts`, `usePinnedCities.test.ts`, `storage.test.ts`.
+
+**Verified.**
+- `npm test` 25/25, `npm run lint`, `tsc -b` clean.
+- Headless Chromium against the production build:
+  1. `?lat=1&lon=1&name=X&tz=Foo/Bar` → renders, shows a point selection.
+  2. Forced render crash → fallback screen; **Start over** → URL `/time/`.
+  3. Storage blocked (getter throws `SecurityError`) → renders normally.
+     The same scenario against the pre-change build (separate worktree) →
+     blank page, confirming the crash was real.
+
 ## 2026-10-02 — Step 3: alarms an hour off on DST-transition days
 
 **Problem.** `zonedWallTimeToUtc` corrected the wall time by the zone's

@@ -2,6 +2,8 @@
 // via history.replaceState, so a link can be copied and shared without
 // polluting browser back-button history on every click.
 
+import { isValidTimeZone } from './timeZone'
+
 export interface ShareParams {
   lat: number
   lon: number
@@ -10,21 +12,39 @@ export interface ShareParams {
   tz?: string
 }
 
-export function readShareParamsFromURL(): ShareParams | null {
-  const params = new URLSearchParams(window.location.search)
+const MAX_LABEL_LENGTH = 100
+
+function label(value: string | null): string | undefined {
+  return value?.trim().slice(0, MAX_LABEL_LENGTH) || undefined
+}
+
+/**
+ * Share links are untrusted input: anyone can craft one. Out-of-range
+ * coordinates are rejected, and an unknown time zone is dropped (degrading
+ * the link to a plain point selection) rather than reaching
+ * Intl.DateTimeFormat, where it would throw mid-render and blank the page.
+ */
+export function parseShareParams(search: string): ShareParams | null {
+  const params = new URLSearchParams(search)
   const latStr = params.get('lat')
   const lonStr = params.get('lon')
   if (!latStr || !lonStr) return null
   const lat = parseFloat(latStr)
   const lon = parseFloat(lonStr)
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null
+  const tz = params.get('tz')
   return {
     lat,
     lon,
-    name: params.get('name') ?? undefined,
-    country: params.get('country') ?? undefined,
-    tz: params.get('tz') ?? undefined,
+    name: label(params.get('name')),
+    country: label(params.get('country')),
+    tz: tz && isValidTimeZone(tz) ? tz : undefined,
   }
+}
+
+export function readShareParamsFromURL(): ShareParams | null {
+  return parseShareParams(window.location.search)
 }
 
 export function writeShareParamsToURL(params: ShareParams | null) {

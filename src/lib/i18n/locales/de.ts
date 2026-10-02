@@ -14,6 +14,11 @@ export const de: Translations = {
     footer:
       'Erstellt mit Three.js. Die Uhrzeit wird mit TimeAPI.io, dem Uhrzeit-Abgleichsdienst von Binance und einem WorldTimeAPI-kompatiblen HTTP-Zeitdienst (time.now) gegengeprüft – im Panel „Zeitquellen" findest du Live-Technikdetails zu jeder einzelnen. Sonnenaufgang, Sonnenuntergang und Mondphase werden lokal anhand von Standard-Sonnen-/Mondformeln berechnet.',
   },
+  errorBoundary: {
+    title: 'Etwas ist schiefgelaufen',
+    body: 'Auf der Seite ist ein unerwarteter Fehler aufgetreten. Ein Neustart behebt das meist.',
+    startOver: 'Neu starten',
+  },
   globe: {
     sun: 'Sonne',
     moon: 'Mond',

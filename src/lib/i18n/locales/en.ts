@@ -14,6 +14,11 @@ export const en: Translations = {
     footer:
       "Built with Three.js. Time cross-checked against TimeAPI.io, Binance's clock-sync endpoint, and a WorldTimeAPI-compatible HTTP time service (time.now) — see the Time Sources panel for live tech details on each. Sunrise, sunset, and moon phase are computed locally from standard solar/lunar position formulas.",
   },
+  errorBoundary: {
+    title: 'Something went wrong',
+    body: 'The page hit an unexpected error. Starting over usually fixes it.',
+    startOver: 'Start over',
+  },
   globe: {
     sun: 'Sun',
     moon: 'Moon',
