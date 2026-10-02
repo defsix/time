@@ -2,6 +2,21 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 13: iOS alarm limitation documented
+
+**Problem.** iOS "alarms" are ordinary local notifications (muted by the
+silent switch and Focus, one short sound), and `ios/README.md` claimed iOS
+has no alarm API for third-party apps — untrue since AlarmKit (iOS 26).
+
+**Decision (repo owner).** Document now; AlarmKit is a follow-up feature
+(it can't be compiled or tested here, and CI's Xcode 16 can't build it).
+
+**Change.** `ios/README.md`: removed the outdated claim; added a
+*Limitation* note explaining what iOS alarms can't do and the AlarmKit plan.
+Root `README.md` mobile section mentions the difference from Android.
+`ROADMAP.md` gains a *Follow-ups* section (AlarmKit; Android
+`addWebMessageListener` from step 6).
+
 ## 2026-10-02 — Step 12: iOS alarm bookkeeping and JS escaping
 
 **Problem.**

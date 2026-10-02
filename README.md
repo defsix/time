@@ -74,7 +74,9 @@ automatically:
 - [`ios/`](ios/) — Swift/SwiftUI, `WKWebView` + a custom `app://` scheme
   handler, a CoreLocation-backed geolocation bridge, and the same city
   alarms / Nightstand mode as Android (backed by local notifications
-  instead of `AlarmManager`). See [`ios/README.md`](ios/README.md).
+  instead of `AlarmManager` — so, unlike Android's, they're muted by the
+  silent switch and Focus; see the limitation note in
+  [`ios/README.md`](ios/README.md)).
 
 ## Getting started
 
