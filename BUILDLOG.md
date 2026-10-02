@@ -2,6 +2,38 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 15: Globe GPU churn, clean-up and needless rebuilds
+
+**Problem.**
+- `updateOrbitRing` ran every frame and called `setFromPoints`, which in
+  three.js r169 allocates a new buffer attribute (→ new GPU buffer) each
+  call: two per frame, all night in Nightstand mode.
+- Teardown disposed only the big spheres; graticule, borders, markers and
+  rings leaked, and the WebGL context wasn't released (browsers cap live
+  contexts; each Nightstand toggle mounts a new Globe).
+- The scene effect depended on `userLocation`, so the whole WebGL scene was
+  rebuilt when geolocation resolved, dropping any highlight.
+
+**Change (`Globe.tsx`).**
+- Rings own a fixed `Float32Array` attribute, updated in place and only when
+  the body's declination moved ≥ 0.01°.
+- Teardown traverses the scene disposing every geometry/material, then
+  `renderer.forceContextLoss()`.
+- Scene built once per mount; the user's location reaches it via a ref and
+  an effect that moves the (now always-present, initially hidden) marker.
+
+**Verified.** Lint, `tsc -b`, 34/34 tests, build. Headless Chromium with
+WebGL calls instrumented, geolocation faked, new vs old build:
+
+| | old | new |
+|---|---|---|
+| WebGL contexts after geolocation resolves | 2 (rebuilt) | 1 |
+| New GPU buffers / s at steady state | 14.7 | 0 |
+| Contexts released after 3 Nightstand toggles | 0 of 8 | 6 of 7 |
+
+Screenshot confirms rings, moon marker, city markers, borders and the
+location label still render.
+
 ## 2026-10-02 — Step 14: alarm panel glitches
 
 **Problem.**

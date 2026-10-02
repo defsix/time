@@ -70,6 +70,17 @@ export default function Globe({
     selectedCityNameRef.current = selectedCityName
   }, [selectedCityName])
 
+  // Read through a ref (and applied by the effect below) rather than being a
+  // dependency of the scene effect: geolocation usually resolves a few
+  // seconds after mount, and that used to tear down and rebuild the whole
+  // WebGL scene — losing whatever was highlighted.
+  const userLocationRef = useRef(userLocation)
+  const setUserMarkerRef = useRef<((loc: { lat: number; lon: number } | null) => void) | null>(null)
+  useEffect(() => {
+    userLocationRef.current = userLocation
+    setUserMarkerRef.current?.(userLocation)
+  }, [userLocation])
+
   const flyToHandlerRef = useRef<((req: FlyToRequest) => void) | null>(null)
   const lastFlyNonceRef = useRef<number | null>(null)
   useEffect(() => {
@@ -151,7 +162,8 @@ export default function Globe({
       controls.autoRotate = false
       returnHomeTimer = setTimeout(() => {
         returnHomeTimer = null
-        if (userLocation) flyToTarget(userLocation.lat, userLocation.lon, t.app.yourLocation)
+        const home = userLocationRef.current
+        if (home) flyToTarget(home.lat, home.lon, t.app.yourLocation)
         startRotateTimer = setTimeout(() => {
           startRotateTimer = null
           controls.autoRotate = true
@@ -423,14 +435,18 @@ export default function Globe({
       showLabelAt(pos, `${selectedPoint.lat.toFixed(2)}°, ${selectedPoint.lon.toFixed(2)}°`)
     }
 
-    // User location marker (distinct color)
-    let userMarker: THREE.Mesh | null = null
-    if (userLocation) {
-      const mat = new THREE.MeshBasicMaterial({ color: 0x3fff9e })
-      userMarker = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), mat)
-      userMarker.position.copy(latLonToVector3(userLocation.lat, userLocation.lon, RADIUS * 1.015))
-      scene.add(userMarker)
+    // User location marker (distinct color), shown once a location is known
+    const userMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0x3fff9e }),
+    )
+    scene.add(userMarker)
+    function setUserMarker(location: { lat: number; lon: number } | null) {
+      userMarker.visible = location !== null
+      if (location) userMarker.position.copy(latLonToVector3(location.lat, location.lon, RADIUS * 1.015))
     }
+    setUserMarker(userLocationRef.current)
+    setUserMarkerRef.current = setUserMarker
 
     // Sun/moon position markers, orbiting outside the globe at whatever
     // point each body is currently overhead (subSolarPoint/subLunarPoint),
@@ -461,22 +477,31 @@ export default function Globe({
     scene.add(moonMarker)
 
     function makeOrbitRing(color: number) {
-      const points = Array.from({ length: ORBIT_RING_SEGMENTS + 1 }, () => new THREE.Vector3())
-      const geometry = new THREE.BufferGeometry().setFromPoints(points)
+      const positions = new THREE.BufferAttribute(new Float32Array((ORBIT_RING_SEGMENTS + 1) * 3), 3)
+      const geometry = new THREE.BufferGeometry().setAttribute('position', positions)
       const material = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.3 })
       const ring = new THREE.LineLoop(geometry, material)
       scene.add(ring)
-      return { ring, points, geometry }
+      return { ring, geometry, positions, lat: NaN }
     }
     const sunRing = makeOrbitRing(0xffd27a)
     const moonRing = makeOrbitRing(0x8fa3c0)
 
+    // Called every frame, but a ring only moves with its body's declination
+    // (well under a degree an hour), so it's rebuilt only when that has
+    // visibly changed — and written into the existing buffer. (setFromPoints
+    // allocated a new GPU buffer on every call: twice a frame, all night
+    // long in Nightstand mode.)
     function updateOrbitRing(target: ReturnType<typeof makeOrbitRing>, lat: number, radius: number) {
+      if (Math.abs(lat - target.lat) < 0.01) return
+      target.lat = lat
       for (let i = 0; i <= ORBIT_RING_SEGMENTS; i++) {
         const lon = (i / ORBIT_RING_SEGMENTS) * 360 - 180
-        target.points[i].copy(latLonToVector3(lat, lon, radius))
+        const v = latLonToVector3(lat, lon, radius)
+        target.positions.setXYZ(i, v.x, v.y, v.z)
       }
-      target.geometry.setFromPoints(target.points)
+      target.positions.needsUpdate = true
+      target.geometry.computeBoundingSphere()
     }
 
     // Dim ambient keeps night-side clouds faintly visible instead of pure
@@ -527,11 +552,10 @@ export default function Globe({
       flyToTarget(request.city.lat, request.city.lon, `${request.city.name}, ${request.city.country}`)
     }
     flyToHandlerRef.current = flyTo
-    // If a fly-to request already arrived in the same commit that recreated this
-    // scene (e.g. geolocation resolving sets userLocation and the initial
-    // nearest-city selection at once), the request-watcher effect below may run
-    // before this ref is (re)assigned. Catch that race by flushing any pending,
-    // not-yet-actioned request right here too.
+    // If a fly-to request already arrived in the same commit that created this
+    // scene (e.g. a shared link's city, requested on first render), the
+    // request-watcher effect above ran before this ref was assigned and left
+    // it unclaimed. Flush any pending, not-yet-actioned request right here.
     if (flyToRequest && flyToRequest.nonce !== lastFlyNonceRef.current) {
       lastFlyNonceRef.current = flyToRequest.nonce
       flyTo(flyToRequest)
@@ -686,20 +710,28 @@ export default function Globe({
       renderer.domElement.removeEventListener('pointerup', handlePointerUp)
       renderer.domElement.removeEventListener('pointermove', handlePointerMove)
       renderer.domElement.removeEventListener('wheel', handleWheel)
+      setUserMarkerRef.current = null
       controls.dispose()
       ;[dayMap, nightMap, specularMap, normalMap, cloudsMap].forEach((tex) => tex.dispose())
-      core.geometry.dispose()
-      coreMaterial.dispose()
-      clouds.geometry.dispose()
-      cloudsMaterial.dispose()
-      atmosphere.geometry.dispose()
-      atmosphereMaterial.dispose()
+      // Every mesh/line in the scene (graticule, borders, markers, rings…),
+      // not just the big spheres — each holds GPU buffers until disposed.
+      scene.traverse((object) => {
+        const { geometry, material } = object as THREE.Mesh
+        geometry?.dispose()
+        if (Array.isArray(material)) material.forEach((m) => m.dispose())
+        else material?.dispose()
+      })
       renderer.dispose()
+      // Release the WebGL context now rather than whenever it's garbage
+      // collected: browsers cap live contexts (~16), and each Nightstand
+      // toggle mounts a fresh Globe.
+      renderer.forceContextLoss()
       mount.removeChild(renderer.domElement)
       mount.removeChild(labelEl)
     }
+    // Scene is built once per mount; props that change later reach it via refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocation])
+  }, [])
 
   return <div ref={mountRef} className="globe-mount" />
 }
