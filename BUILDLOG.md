@@ -2,6 +2,39 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 6: native bridges only answer the app's own page
+
+**Problem (latent).** Android's `addJavascriptInterface` bridges and iOS's
+message handlers are exposed to *any* page the web view shows, and neither
+shell restricted navigation or checked the caller — Android also granted
+geolocation to any origin. No link in today's UI leaves the bundled app, but
+one future `<a href>` would have let a third-party page read/schedule alarms
+and get location silently.
+
+**Change.**
+- Android `MainActivity`: `shouldOverrideUrlLoading` refuses everything
+  outside `https://appassets.androidplatform.net`; a user-tapped http(s)
+  link opens in the browser instead. Geolocation is denied to any other
+  origin.
+- iOS: `WebViewController` is now the `WKNavigationDelegate` and cancels any
+  navigation outside `app://local` (tapped http(s) links open in Safari);
+  `GeolocationBridge` and `NativeBridge` ignore messages unless they come from
+  the app's main frame (`LocalSchemeHandler.isAppFrame`, based on the frame's
+  request URL rather than `securityOrigin`, whose shape for custom schemes I
+  couldn't confirm here).
+- Considered and deferred: replacing `addJavascriptInterface` with
+  `WebViewCompat.addWebMessageListener` (origin allow-list built in) — it makes
+  every Android bridge call async and needs a `nativeBridge.ts` rework;
+  locking navigation closes the realistic path.
+- Android and iOS READMEs updated.
+
+**Verified.** Android: `compileDebugKotlin` OK. iOS: `swiftc -parse` (Swift
+6.1.2 on Linux) OK for all files — syntax only; UIKit/WebKit types can't be
+checked without Xcode.
+**Not verified.** On-device behaviour on either platform. The iOS
+simulator build in CI (`ios-build.yml`, runs on PRs) is the first real
+compile check.
+
 ## 2026-10-02 — Step 5: malformed time-API payload blanking the page
 
 **Problem.** Source parsers weren't validated: a 200 response with an

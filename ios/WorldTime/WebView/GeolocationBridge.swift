@@ -25,6 +25,7 @@ final class GeolocationBridge: NSObject, WKScriptMessageHandler, CLLocationManag
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == Self.messageHandlerName,
+              LocalSchemeHandler.isAppFrame(message.frameInfo),
               let body = message.body as? [String: Any],
               let requestID = (body["id"] as? NSNumber)?.intValue
         else { return }

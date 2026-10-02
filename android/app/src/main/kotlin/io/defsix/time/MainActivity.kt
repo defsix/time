@@ -1,7 +1,10 @@
 package io.defsix.time
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -123,6 +126,23 @@ class MainActivity : AppCompatActivity() {
                 request: WebResourceRequest
             ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
 
+            // The JS bridges below are exposed to whatever page this WebView
+            // shows, so it must only ever show the bundled app: any other
+            // URL is refused, and a link the user actually tapped opens in
+            // their browser instead.
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val url = request.url
+                if (isAppOrigin(url)) return false
+                if (request.isForMainFrame && request.hasGesture() && (url.scheme == "https" || url.scheme == "http")) {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, url))
+                    } catch (_: ActivityNotFoundException) {
+                        // No browser installed — nothing else to do with it.
+                    }
+                }
+                return true
+            }
+
             override fun onPageFinished(view: WebView, url: String?) {
                 super.onPageFinished(view, url)
                 // Re-apply on every (re)load, since a fresh document has none
@@ -140,7 +160,9 @@ class MainActivity : AppCompatActivity() {
                 origin: String,
                 callback: GeolocationPermissions.Callback
             ) {
-                if (hasLocationPermission()) {
+                if (!isAppOrigin(Uri.parse(origin))) {
+                    callback.invoke(origin, false, false)
+                } else if (hasLocationPermission()) {
                     callback.invoke(origin, true, false)
                 } else {
                     pendingGeolocationOrigin = origin
@@ -174,6 +196,9 @@ class MainActivity : AppCompatActivity() {
             null,
         )
     }
+
+    private fun isAppOrigin(url: Uri): Boolean =
+        url.scheme == "https" && url.host == WebViewAssetLoader.DEFAULT_DOMAIN
 
     private fun hasLocationPermission(): Boolean =
         listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION).any {

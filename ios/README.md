@@ -30,6 +30,11 @@ panel are the same React/Three.js code that runs on the live site.
   time-sync APIs a stable, non-null origin instead. This mirrors why the
   Android build uses `WebViewAssetLoader`'s synthetic https origin rather
   than `file://`.
+- **The web view only ever shows the bundled app.** The message handlers
+  and injected shims are available to whatever page is loaded, so
+  `WebViewController`'s `WKNavigationDelegate` cancels any navigation outside
+  `app://local` (a link the user taps opens in Safari instead), and both
+  bridges ignore messages that don't come from the app's own main frame.
 - **Geolocation bridge.** Unlike Android's `WebView`, `WKWebView` has no
   built-in Geolocation Web API at all. [`geolocation-shim.js`](WorldTime/WebView/geolocation-shim.js)
   (injected as a `WKUserScript`) replaces `navigator.geolocation` with a

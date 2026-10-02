@@ -12,6 +12,20 @@ final class LocalSchemeHandler: NSObject, WKURLSchemeHandler {
     static let scheme = "app"
     static let host = "local"
 
+    /// Whether a URL belongs to the bundled app (app://local/...).
+    static func isAppURL(_ url: URL) -> Bool {
+        url.scheme == scheme && url.host == host
+    }
+
+    /// Whether a script message came from the bundled app's own top-level
+    /// page. WKScriptMessageHandlers are reachable from every frame of every
+    /// page the web view shows, so the native bridges check this before
+    /// acting on (or answering) any message.
+    static func isAppFrame(_ frame: WKFrameInfo) -> Bool {
+        guard frame.isMainFrame, let url = frame.request.url else { return false }
+        return isAppURL(url)
+    }
+
     private let wwwDirectory: URL
     private let queue = DispatchQueue(label: "io.defsix.time.local-scheme-handler")
     private var cancelledTasks = Set<ObjectIdentifier>()

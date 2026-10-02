@@ -22,7 +22,13 @@ React/Three.js code that runs on the live site.
   the deployed site.
 - Geolocation (used for the nearest-city default) is wired through
   `WebChromeClient.onGeolocationPermissionsShowPrompt`, backed by a runtime
-  `ACCESS_FINE_LOCATION` permission request.
+  request for `ACCESS_FINE_LOCATION` *and* `ACCESS_COARSE_LOCATION` (Android
+  12+ ignores a request for fine on its own; either grant is enough).
+- **The WebView only ever shows the bundled app.** The native bridges
+  (`window.AndroidAlarmBridge`, `window.AndroidDisplayBridge`) are visible to
+  whatever page is loaded, so `shouldOverrideUrlLoading` refuses every URL
+  outside `appassets.androidplatform.net` (a link the user taps opens in
+  their browser instead), and location is only ever granted to that origin.
 
 ## City alarms
 
