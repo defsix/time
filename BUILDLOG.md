@@ -2,6 +2,36 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 12: iOS alarm bookkeeping and JS escaping
+
+**Problem.**
+- Fired alarms were never removed from the `UserDefaults` list (only
+  cancelling removed them), so the Alarm panel and Nightstand mode showed
+  past alarms forever.
+- `scheduleAlarm` ignored `UNUserNotificationCenter.add`'s error and
+  reported `ok` (and stored the alarm) before iOS had accepted it.
+- Error text was spliced into `evaluateJavaScript` with only `"` escaped —
+  a backslash or newline (e.g. in a localised CoreLocation error) produced
+  invalid JS, so the promise never settled.
+- A NaN `epochMillis` would reach `UNTimeIntervalNotificationTrigger`,
+  which raises (crash) for a non-positive/NaN interval.
+
+**Change.**
+- `listAlarms` drops alarms whose time has passed (`pruneFiredAlarms`).
+- `scheduleAlarm` persists and resolves `ok` only in `add`'s completion,
+  on the main thread; failures reject with the system's message. NaN /
+  infinite times are rejected as invalid arguments.
+- New `javaScriptStringLiteral` (JSON-encoded) used for every string sent
+  back to JS, in both bridges.
+- iOS README updated.
+
+**Verified.** `swiftc -parse` OK for all files. `javaScriptStringLiteral`
+extracted verbatim, compiled on Linux, and its output for seven hostile
+strings (quotes, trailing backslash, newlines/tabs, `</script>`, U+2028,
+template/backtick) evaluated in Node → all round-trip exactly.
+**Not verified.** On a device/simulator. Note the JS side doesn't yet show
+a rejected `scheduleAlarm` to the user — that's step 14.
+
 ## 2026-10-02 — Step 11: Android ringing screen
 
 **Problem.**

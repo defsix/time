@@ -77,7 +77,9 @@ implemented here too, sharing the same web-side code
   (`UNUserNotificationCenterDelegate.willPresent`) so an alarm that fires
   while the app is already open still shows instead of being silently
   dropped, and persists the pending-alarms list in `UserDefaults` purely so
-  `listAlarms()` can enumerate it (the notifications themselves are
+  `listAlarms()` can enumerate it — alarms are only added once iOS has
+  accepted the notification, and ones whose time has passed are dropped
+  whenever the list is read (the notifications themselves are
   scheduled and fired by the OS, so unlike Android there's no
   `BootReceiver`-equivalent needed for reboot survival).
 - **Keep-awake** uses `UIApplication.shared.isIdleTimerDisabled`, mirroring
