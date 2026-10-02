@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { t } from '../lib/i18n'
 
-export default function CopyLinkButton() {
+/**
+ * Copies `url` — built from the card's selection, not read from the address
+ * bar, which deliberately doesn't carry the automatic nearest-city default.
+ */
+export default function CopyLinkButton({ url }: { url: string }) {
   const [copied, setCopied] = useState(false)
 
   return (
@@ -9,7 +13,7 @@ export default function CopyLinkButton() {
       className={`clock-card-icon-btn ${copied ? 'active' : ''}`}
       onClick={async () => {
         try {
-          await navigator.clipboard.writeText(window.location.href)
+          await navigator.clipboard.writeText(url)
           setCopied(true)
           setTimeout(() => setCopied(false), 1500)
         } catch {

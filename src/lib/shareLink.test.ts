@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseShareParams } from './shareLink'
+import { parseShareParams, shareURLFor } from './shareLink'
 
 describe('parseShareParams', () => {
   it('parses a normal city link', () => {
@@ -27,5 +27,17 @@ describe('parseShareParams', () => {
     const parsed = parseShareParams(`?lat=0&lon=0&name=${'x'.repeat(500)}&country=%20%20`)
     expect(parsed?.name).toHaveLength(100)
     expect(parsed?.country).toBeUndefined()
+  })
+})
+
+describe('shareURLFor', () => {
+  it('replaces the query string with the selection, keeping the page path', () => {
+    expect(
+      shareURLFor({ lat: 53.35, lon: -6.26, name: 'Dublin', country: 'Ireland', tz: 'Europe/Dublin' }, 'https://defsix.github.io/time/?lat=1&lon=2'),
+    ).toBe('https://defsix.github.io/time/?lat=53.3500&lon=-6.2600&name=Dublin&country=Ireland&tz=Europe%2FDublin')
+  })
+
+  it('produces the bare page URL for no selection', () => {
+    expect(shareURLFor(null, 'https://defsix.github.io/time/?lat=1&lon=2')).toBe('https://defsix.github.io/time/')
   })
 })

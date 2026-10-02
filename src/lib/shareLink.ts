@@ -47,8 +47,9 @@ export function readShareParamsFromURL(): ShareParams | null {
   return parseShareParams(window.location.search)
 }
 
-export function writeShareParamsToURL(params: ShareParams | null) {
-  const url = new URL(window.location.href)
+/** The page's own URL with `params` (or nothing) as its query string. */
+export function shareURLFor(params: ShareParams | null, base: string = window.location.href): string {
+  const url = new URL(base)
   url.search = ''
   if (params) {
     url.searchParams.set('lat', params.lat.toFixed(4))
@@ -57,5 +58,9 @@ export function writeShareParamsToURL(params: ShareParams | null) {
     if (params.country) url.searchParams.set('country', params.country)
     if (params.tz) url.searchParams.set('tz', params.tz)
   }
-  window.history.replaceState(null, '', url.toString())
+  return url.toString()
+}
+
+export function writeShareParamsToURL(params: ShareParams | null) {
+  window.history.replaceState(null, '', shareURLFor(params))
 }

@@ -16,7 +16,7 @@ order of priority. Details of each completed step are in
 
 - [x] 6. Native bridges answer any origin — restrict to the app's own origin (Android + iOS)
 - [x] 7. iOS `LocalSchemeHandler` path traversal and stop/start race
-- [ ] 8. Share URL leaks the geolocated nearest city; geolocation overrides the user's own pick
+- [x] 8. Share URL leaks the geolocated nearest city; geolocation overrides the user's own pick
 - [ ] 9. Privacy policy inaccuracies + Android backup rules
 
 ## Bugs

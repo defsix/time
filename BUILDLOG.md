@@ -2,6 +2,35 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 8: share URL leaking the geolocated city; geolocation overriding the user
+
+**Problem.**
+- On launch the app selects the nearest city to the user's GPS fix and
+  wrote it into the address bar — so it landed in browser history/sync and
+  in any URL the user pasted, while the privacy policy says location is
+  discarded.
+- `hasSharedSelectionRef` only reflected a share link, so if the user picked
+  something before geolocation (and the ~2 MB city dataset) finished, the app
+  replaced their pick with the nearest city.
+
+**Change.**
+- `App.tsx`: the nearest-city default is marked `auto` and kept out of the
+  address bar; any user selection (city or point) sets `userChoseRef`, which
+  the geolocation callback now respects.
+- `CopyLinkButton` takes a `url` built from the card's selection
+  (`shareURLFor`), so explicitly copying the auto-selected city still works.
+- `shareLink.ts`: `shareURLFor` (shared by the address bar and Copy link);
+  tests added.
+
+**Verified.** `npm test` 31/31, lint, `tsc -b` clean. Headless Chromium with
+geolocation faked to Dublin, new vs old build:
+
+| | old build | new build |
+|---|---|---|
+| Address bar after auto-select | `?lat=53.3331&lon=-6.2489&name=Dublin…` | *(empty)* |
+| Copy link | Dublin link | Dublin link |
+| Click globe before lookup finishes | replaced by "Dublin, Ireland" | stays "Selected Point" |
+
 ## 2026-10-02 — Step 7: iOS `LocalSchemeHandler` traversal and task race
 
 **Problem.**
