@@ -590,8 +590,13 @@
   font-size: 0.8rem;
 }
 
-.city-alarms-set-btn:hover {
+.city-alarms-set-btn:hover:not(:disabled) {
   border-color: var(--accent-selection);
+}
+
+.city-alarms-set-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .city-alarms-status {

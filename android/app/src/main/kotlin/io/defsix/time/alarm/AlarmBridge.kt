@@ -52,11 +52,14 @@ class AlarmBridge(private val activity: MainActivity, private val webView: WebVi
     }
 
     @JavascriptInterface
-    fun scheduleAlarm(id: String, cityLabel: String, epochMillis: Double, label: String): String {
+    fun scheduleAlarm(id: String, cityLabel: String, epochMillis: Double, label: String, timeZone: String): String {
+        // NaN.toLong() is 0 (1970), which would ring immediately; throwing
+        // surfaces in JS as an exception the alarm panel reports.
+        require(epochMillis.isFinite()) { "Invalid alarm time" }
         if (!NotificationManagerCompat.from(activity).areNotificationsEnabled()) {
             return "needs_notification_permission"
         }
-        val alarm = StoredAlarm(id = id, cityLabel = cityLabel, epochMillis = epochMillis.toLong(), label = label)
+        val alarm = StoredAlarm(id = id, cityLabel = cityLabel, epochMillis = epochMillis.toLong(), label = label, timeZone = timeZone)
         store.add(alarm)
         val exact = AlarmScheduler.schedule(activity, alarm)
         return if (exact) "ok" else "ok_inexact"

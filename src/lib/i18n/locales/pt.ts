@@ -60,6 +60,7 @@ export const pt: Translations = {
     enableNotifications: 'Ativar notificações',
     exactAlarmNudge: 'O acesso a alarmes exatos não foi concedido — os alarmes podem tocar com até ~10 min de atraso.',
     grantExactAlarms: 'Conceder alarmes exatos',
+    scheduleFailed: 'Não foi possível definir o alarme. Tente novamente.',
   },
   nightstand: {
     exitAria: 'Sair do modo mesa de cabeceira',

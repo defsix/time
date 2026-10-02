@@ -32,7 +32,7 @@ import java.util.Date
  * Dismiss then act on every alarm it's ringing for.
  */
 class AlarmRingActivity : AppCompatActivity() {
-    private data class RingingAlarm(val id: String, val cityLabel: String, val label: String)
+    private data class RingingAlarm(val id: String, val cityLabel: String, val label: String, val timeZone: String?)
 
     private var mediaPlayer: MediaPlayer? = null
     private var vibrator: Vibrator? = null
@@ -87,7 +87,7 @@ class AlarmRingActivity : AppCompatActivity() {
         if (ringing.none { it.id == id }) {
             val cityLabel = intent.getStringExtra(AlarmScheduler.EXTRA_CITY_LABEL) ?: ""
             val label = intent.getStringExtra(AlarmScheduler.EXTRA_LABEL) ?: cityLabel
-            ringing += RingingAlarm(id, cityLabel, label)
+            ringing += RingingAlarm(id, cityLabel, label, intent.getStringExtra(AlarmScheduler.EXTRA_TIME_ZONE))
         }
         findViewById<TextView>(R.id.alarmLabel).text =
             getString(R.string.alarm_ringing_for, ringing.joinToString(" · ") { it.label })
@@ -147,7 +147,13 @@ class AlarmRingActivity : AppCompatActivity() {
         val snoozeUntil = System.currentTimeMillis() + SNOOZE_MILLIS
         for (alarm in ringing) {
             AlarmReceiver.cancelNotification(this, alarm.id)
-            val snoozed = StoredAlarm(id = alarm.id, cityLabel = alarm.cityLabel, epochMillis = snoozeUntil, label = alarm.label)
+            val snoozed = StoredAlarm(
+                id = alarm.id,
+                cityLabel = alarm.cityLabel,
+                epochMillis = snoozeUntil,
+                label = alarm.label,
+                timeZone = alarm.timeZone,
+            )
             store.add(snoozed)
             AlarmScheduler.schedule(this, snoozed)
         }

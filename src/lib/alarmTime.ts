@@ -1,3 +1,5 @@
+import { isValidTimeZone } from './timeZone'
+
 // Converts a wall-clock "HH:MM in some IANA time zone" into a real UTC
 // instant, using only Intl.DateTimeFormat (no timezone database of our own,
 // no dependency). Works for any IANA zone, DST included.
@@ -96,4 +98,20 @@ export function nextOccurrenceEpoch(timeZone: string, hour: number, minute: numb
     minute,
     timeZone,
   )
+}
+
+/**
+ * An alarm's time for display in the zone it was set in — "Tue 07:00" for
+ * an alarm set for 7:00 in Tokyo, wherever the device is. Falls back to the
+ * device's own zone for alarms without a (known) zone.
+ */
+export function formatAlarmTime(epochMillis: number, timeZone?: string | null, hour12?: boolean): string {
+  if (!Number.isFinite(epochMillis)) return '—'
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: timeZone && isValidTimeZone(timeZone) ? timeZone : undefined,
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12,
+  }).format(new Date(epochMillis))
 }

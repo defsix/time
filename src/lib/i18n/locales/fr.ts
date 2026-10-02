@@ -60,6 +60,7 @@ export const fr: Translations = {
     enableNotifications: 'Activer les notifications',
     exactAlarmNudge: "L'accès aux alarmes exactes n'est pas accordé — les alarmes peuvent sonner jusqu'à ~10 min en retard.",
     grantExactAlarms: 'Accorder les alarmes exactes',
+    scheduleFailed: "Impossible de régler l'alarme. Réessayez.",
   },
   nightstand: {
     exitAria: 'Quitter le mode chevet',

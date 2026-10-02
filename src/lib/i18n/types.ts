@@ -59,6 +59,7 @@ export interface Translations {
     enableNotifications: string
     exactAlarmNudge: string
     grantExactAlarms: string
+    scheduleFailed: string
   }
   nightstand: {
     exitAria: string

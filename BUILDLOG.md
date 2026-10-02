@@ -2,6 +2,48 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 14: alarm panel glitches
+
+**Problem.**
+- A cleared `<input type="time">` (`""`) made `nextOccurrenceEpoch` throw:
+  unhandled rejection, no feedback.
+- Bridge failures (e.g. iOS rejecting since step 12, or a Java exception on
+  Android) left the panel looking as if nothing happened.
+- Two overlapping Android permission requests: the native side answers via
+  one global callback, so the first promise never settled.
+- Alarm lists (panel + Nightstand) showed times in the *device's* zone, so
+  "7:00 in Tokyo" read as e.g. "Fri 23:00" in Dublin; alarms didn't store
+  their zone.
+- Found on the way: the inexact Android fallback window was
+  `[time − 10 min, time]`, i.e. it could ring up to 10 min **early**, while
+  the UI (in all 10 languages) says it "may ring up to ~10 min late".
+
+**Change.**
+- `CityAlarms`: Set is disabled unless the time is a valid `HH:MM`; set and
+  cancel wrapped in `try`/`finally`; failures show a new translated
+  `scheduleFailed` message (10 locales).
+- `nativeBridge.ts`: concurrent Android permission requests share one
+  in-flight promise; `scheduleCityAlarm` passes the IANA zone.
+- Alarms store `timeZone` end-to-end (Android `StoredAlarm` + PendingIntent
+  extras so Snooze keeps it; iOS `StoredAlarm` as an optional, so data saved
+  by older versions still decodes). New `formatAlarmTime` shows each alarm
+  in its own zone, used by the panel and Nightstand mode.
+- Android: inexact window now opens *at* the alarm time (matches the
+  promise in the UI); `scheduleAlarm` throws on a non-finite time (NaN →
+  epoch 0 would have rung immediately).
+
+**Verified.**
+- `npm test` 34/34 (new: `formatAlarmTime`, permission de-duplication);
+  lint, `tsc -b` clean.
+- Android `compileDebugKotlin` + `lintDebug` → 0 errors. Swift
+  `-parse` OK; the iOS `StoredAlarm`/`encodeAlarms` code compiled and run on
+  Linux: old saved data (no `timeZone`) decodes, new data round-trips,
+  missing zone encodes as `null`.
+- Headless Chromium (browser in Dublin, fake Android bridge, Tokyo selected):
+  status "Alarm set for Sat 07:00", list "Tokyo, Japan — Sat 07:00"; empty
+  time → Set disabled; bridge throwing → "Couldn't set the alarm — please
+  try again.", no page errors.
+
 ## 2026-10-02 — Step 13: iOS alarm limitation documented
 
 **Problem.** iOS "alarms" are ordinary local notifications (muted by the

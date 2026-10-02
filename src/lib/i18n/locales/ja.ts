@@ -60,6 +60,7 @@ export const ja: Translations = {
     enableNotifications: '通知を有効にする',
     exactAlarmNudge: '正確なアラームへのアクセスが許可されていません — アラームが最大約10分遅れて鳴ることがあります。',
     grantExactAlarms: '正確なアラームを許可',
+    scheduleFailed: 'アラームを設定できませんでした。もう一度お試しください。',
   },
   nightstand: {
     exitAria: 'ナイトスタンドモードを終了',

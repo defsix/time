@@ -60,6 +60,7 @@ export const pl: Translations = {
     enableNotifications: 'Włącz powiadomienia',
     exactAlarmNudge: 'Nie przyznano dostępu do dokładnych alarmów — alarmy mogą dzwonić z opóźnieniem do ~10 min.',
     grantExactAlarms: 'Przyznaj dokładne alarmy',
+    scheduleFailed: 'Nie udało się ustawić alarmu. Spróbuj ponownie.',
   },
   nightstand: {
     exitAria: 'Wyjdź z trybu szafki nocnej',

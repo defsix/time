@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Globe from './Globe'
 import type { City } from '../lib/cities'
 import { listCityAlarms, type CityAlarm } from '../lib/nativeBridge'
+import { formatAlarmTime } from '../lib/alarmTime'
 import { useWakeLock } from '../lib/useWakeLock'
 import { t } from '../lib/i18n'
 
@@ -97,14 +98,7 @@ export default function NightstandMode({
               .map((alarm) => (
                 <div key={alarm.id} className="nightstand-row">
                   <span className="nightstand-row-name">⏰ {alarm.label}</span>
-                  <span className="nightstand-row-time">
-                    {new Intl.DateTimeFormat(undefined, {
-                      weekday: 'short',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12,
-                    }).format(new Date(alarm.epochMillis))}
-                  </span>
+                  <span className="nightstand-row-time">{formatAlarmTime(alarm.epochMillis, alarm.timeZone, hour12)}</span>
                 </div>
               ))}
           </div>

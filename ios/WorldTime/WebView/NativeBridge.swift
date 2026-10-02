@@ -8,6 +8,8 @@ private struct StoredAlarm: Codable {
     let cityLabel: String
     let epochMillis: Double
     let label: String
+    /// IANA zone the alarm was set in (for display); nil for alarms stored by older versions.
+    let timeZone: String?
 }
 
 /// Bridges the alarm + display features `nativeBridge.ts` expects
@@ -113,6 +115,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
             reject(requestID, message: "Invalid scheduleAlarm arguments")
             return
         }
+        let timeZone = args.count > 4 ? args[4] as? String : nil
 
         UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
             guard let self else { return }
@@ -142,7 +145,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
                     }
                     var alarms = self.loadAlarms()
                     alarms.removeAll { $0.id == alarmID }
-                    alarms.append(StoredAlarm(id: alarmID, cityLabel: cityLabel, epochMillis: epochMillis, label: label))
+                    alarms.append(StoredAlarm(id: alarmID, cityLabel: cityLabel, epochMillis: epochMillis, label: label, timeZone: timeZone))
                     self.saveAlarms(alarms)
                     self.resolve(requestID, "ok")
                 }
@@ -189,7 +192,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
 
     private func encodeAlarms(_ alarms: [StoredAlarm]) -> [[String: Any]] {
         alarms.map {
-            ["id": $0.id, "cityLabel": $0.cityLabel, "epochMillis": $0.epochMillis, "label": $0.label]
+            ["id": $0.id, "cityLabel": $0.cityLabel, "epochMillis": $0.epochMillis, "label": $0.label, "timeZone": $0.timeZone ?? NSNull()]
         }
     }
 

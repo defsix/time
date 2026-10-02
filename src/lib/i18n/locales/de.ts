@@ -60,6 +60,7 @@ export const de: Translations = {
     enableNotifications: 'Benachrichtigungen aktivieren',
     exactAlarmNudge: 'Zugriff auf exakte Alarme wurde nicht gewährt – Alarme können bis zu ~10 Min. zu spät klingeln.',
     grantExactAlarms: 'Exakte Alarme erlauben',
+    scheduleFailed: 'Der Alarm konnte nicht gestellt werden. Versuche es erneut.',
   },
   nightstand: {
     exitAria: 'Nachttisch-Modus verlassen',

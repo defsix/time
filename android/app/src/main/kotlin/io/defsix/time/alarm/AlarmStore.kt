@@ -11,6 +11,8 @@ data class StoredAlarm(
     val cityLabel: String,
     val epochMillis: Long,
     val label: String,
+    /** IANA zone the alarm was set in (for display); null for alarms stored by older versions. */
+    val timeZone: String? = null,
 )
 
 /**
@@ -46,11 +48,12 @@ class AlarmStore(context: Context) {
                 cityLabel = obj.getString("cityLabel"),
                 epochMillis = obj.getLong("epochMillis"),
                 label = obj.getString("label"),
+                timeZone = if (obj.isNull("timeZone")) null else obj.getString("timeZone"),
             )
         }
     }
 
-    private fun writeAll(alarms: List<StoredAlarm>) {
+    private fun toJsonArray(alarms: List<StoredAlarm>): JSONArray {
         val array = JSONArray()
         for (alarm in alarms) {
             array.put(
@@ -59,9 +62,14 @@ class AlarmStore(context: Context) {
                     .put("cityLabel", alarm.cityLabel)
                     .put("epochMillis", alarm.epochMillis)
                     .put("label", alarm.label)
+                    .put("timeZone", alarm.timeZone) // null removes the key
             )
         }
-        prefs.edit().putString(KEY_ALARMS, array.toString()).apply()
+        return array
+    }
+
+    private fun writeAll(alarms: List<StoredAlarm>) {
+        prefs.edit().putString(KEY_ALARMS, toJsonArray(alarms).toString()).apply()
     }
 
     // One lock for every instance: the bridge, receivers and ring screen each
@@ -82,19 +90,7 @@ class AlarmStore(context: Context) {
         writeAll(all)
     }
 
-    fun toJson(): String = synchronized(LOCK) {
-        val array = JSONArray()
-        for (alarm in readAll()) {
-            array.put(
-                JSONObject()
-                    .put("id", alarm.id)
-                    .put("cityLabel", alarm.cityLabel)
-                    .put("epochMillis", alarm.epochMillis)
-                    .put("label", alarm.label)
-            )
-        }
-        array.toString()
-    }
+    fun toJson(): String = synchronized(LOCK) { toJsonArray(readAll()).toString() }
 
     companion object {
         private const val PREFS_NAME = "city_alarms"

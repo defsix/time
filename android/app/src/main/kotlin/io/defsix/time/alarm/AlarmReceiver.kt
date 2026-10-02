@@ -27,6 +27,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarmId = intent.getStringExtra(AlarmScheduler.EXTRA_ALARM_ID) ?: return
         val cityLabel = intent.getStringExtra(AlarmScheduler.EXTRA_CITY_LABEL) ?: ""
         val label = intent.getStringExtra(AlarmScheduler.EXTRA_LABEL) ?: cityLabel
+        val timeZone = intent.getStringExtra(AlarmScheduler.EXTRA_TIME_ZONE)
 
         AlarmStore(context).remove(alarmId)
 
@@ -35,6 +36,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(AlarmScheduler.EXTRA_ALARM_ID, alarmId)
             putExtra(AlarmScheduler.EXTRA_CITY_LABEL, cityLabel)
             putExtra(AlarmScheduler.EXTRA_LABEL, label)
+            putExtra(AlarmScheduler.EXTRA_TIME_ZONE, timeZone)
         }
         val fullScreenPendingIntent = PendingIntent.getActivity(
             context,

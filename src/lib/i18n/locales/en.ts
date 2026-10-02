@@ -59,6 +59,7 @@ export const en: Translations = {
     enableNotifications: 'Enable notifications',
     exactAlarmNudge: "Exact alarm access isn't granted — alarms may ring up to ~10 min late.",
     grantExactAlarms: 'Grant exact alarms',
+    scheduleFailed: "Couldn't set the alarm — please try again.",
   },
   nightstand: {
     exitAria: 'Exit nightstand mode',

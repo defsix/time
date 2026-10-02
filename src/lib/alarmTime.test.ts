@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextOccurrenceEpoch } from './alarmTime'
+import { formatAlarmTime, nextOccurrenceEpoch } from './alarmTime'
 
 /** "YYYY-MM-DD HH:MM" wall time of `epoch` in `timeZone`, for readable assertions. */
 function wallTime(epoch: number, timeZone: string): string {
@@ -65,5 +65,19 @@ describe('nextOccurrenceEpoch', () => {
     // 02:30 doesn't exist in New York on 2026-03-08; ring at 03:30 EDT instead.
     const epoch = nextOccurrenceEpoch('America/New_York', 2, 30, new Date('2026-03-08T00:00:00Z'))
     expect(wallTime(epoch, 'America/New_York')).toBe('2026-03-08 03:30')
+  })
+})
+
+describe('formatAlarmTime', () => {
+  const sevenInTokyo = Date.parse('2026-06-01T22:00:00Z') // Tue 07:00 in Tokyo
+
+  it('shows the time in the zone the alarm was set in', () => {
+    expect(formatAlarmTime(sevenInTokyo, 'Asia/Tokyo', false)).toMatch(/07:00|7:00/)
+  })
+
+  it('falls back to the device zone for alarms with no or unknown zone, instead of throwing', () => {
+    expect(() => formatAlarmTime(sevenInTokyo, null)).not.toThrow()
+    expect(() => formatAlarmTime(sevenInTokyo, 'Foo/Bar')).not.toThrow()
+    expect(formatAlarmTime(NaN, 'Asia/Tokyo')).toBe('—')
   })
 })

@@ -25,7 +25,7 @@ order of priority. Details of each completed step are in
 - [x] 11. Android ringing screen: Back leaves a stuck notification, second alarm ignored, rings forever (+ Android 8.0 crash found by lint)
 - [x] 12. iOS: fired alarms never leave the list; scheduling errors ignored; JS string escaping
 - [x] 13. iOS alarms are ordinary notifications — documented; AlarmKit is a follow-up (owner's decision)
-- [ ] 14. Alarm panel: empty time input, overlapping permission requests, list shows wrong zone
+- [x] 14. Alarm panel: empty time input, overlapping permission requests, list shows wrong zone (+ inexact window rang early, not late)
 - [ ] 15. Globe re-uploads GPU buffers every frame; incomplete clean-up
 - [ ] 16. Time sync keeps polling in background tabs
 

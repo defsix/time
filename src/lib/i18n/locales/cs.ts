@@ -60,6 +60,7 @@ export const cs: Translations = {
     enableNotifications: 'Povolit oznámení',
     exactAlarmNudge: 'Přístup k přesným budíkům nebyl udělen — budíky mohou zazvonit až s ~10min zpožděním.',
     grantExactAlarms: 'Udělit přesné budíky',
+    scheduleFailed: 'Budík se nepodařilo nastavit. Zkuste to znovu.',
   },
   nightstand: {
     exitAria: 'Ukončit noční režim',

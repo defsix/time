@@ -58,6 +58,7 @@ export const zh: Translations = {
     enableNotifications: '启用通知',
     exactAlarmNudge: '尚未授予精确闹钟权限——闹钟可能会晚响约10分钟。',
     grantExactAlarms: '授予精确闹钟权限',
+    scheduleFailed: '无法设置闹钟，请重试。',
   },
   nightstand: {
     exitAria: '退出床头模式',
