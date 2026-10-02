@@ -42,6 +42,7 @@
              its data in device-protected storage for the same reason. -->
         <activity
             android:name=".alarm.AlarmRingActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:directBootAware="true"
             android:exported="false"
             android:excludeFromRecents="true"

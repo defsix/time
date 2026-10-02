@@ -10,6 +10,8 @@ import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import io.defsix.time.MainActivity
+import io.defsix.time.R
 import io.defsix.time.WorldTimeApplication
 
 /**
@@ -67,6 +69,31 @@ class AlarmReceiver : BroadcastReceiver() {
         fun cancelNotification(context: Context, alarmId: String) {
             context.getSystemService(NotificationManager::class.java)
                 .cancel(notificationIdFor(alarmId))
+        }
+
+        /** Replaces an alarm's ongoing notification with a plain, swipeable "missed" one. */
+        fun postMissedNotification(context: Context, alarmId: String, label: String) {
+            val openApp = PendingIntent.getActivity(
+                context,
+                alarmId.hashCode(),
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            val notification = NotificationCompat.Builder(context, WorldTimeApplication.ALARM_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+                .setContentTitle(context.getString(R.string.alarm_missed_title, label))
+                .setContentText(context.getString(R.string.alarm_missed_text))
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setAutoCancel(true)
+                .setContentIntent(openApp)
+                .build()
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                NotificationManagerCompat.from(context).notify(notificationIdFor(alarmId), notification)
+            } else {
+                cancelNotification(context, alarmId)
+            }
         }
     }
 }

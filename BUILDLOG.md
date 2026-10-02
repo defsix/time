@@ -2,6 +2,39 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 11: Android ringing screen
+
+**Problem.**
+- **Crash on Android 8.0** (found by lint in step 10): `setShowWhenLocked`
+  / `setTurnScreenOn` are API 27, `minSdk` is 26 → `NoSuchMethodError` the
+  moment an alarm rang.
+- Back finished the activity: ringing stopped but the *ongoing* alarm
+  notification stayed stuck (couldn't be swiped).
+- `singleInstance` without `onNewIntent`: a second alarm firing while one
+  rang was ignored by the UI, and its notification was left behind.
+- No timeout: an unanswered alarm rang forever. Rotation recreated the
+  activity, restarting the ringing.
+- `requestExactAlarmPermission` would crash (`ActivityNotFoundException`) if
+  called below Android 12 (lint `InlinedApi`; not reachable from the UI).
+
+**Change.**
+- API-27 calls guarded, falling back to `FLAG_SHOW_WHEN_LOCKED |
+  FLAG_TURN_SCREEN_ON` on 8.0.
+- Back is ignored (Snooze/Dismiss are the way out, like the Clock app).
+- The screen tracks every alarm it's ringing for (`onNewIntent` adds one);
+  Snooze/Dismiss act on all of them.
+- Silences after 10 minutes, replacing the ongoing notification with a
+  swipeable "Missed alarm: …" one (`AlarmReceiver.postMissedNotification`).
+- `configChanges` on the activity so rotation doesn't restart it.
+- Label text now uses a string resource with a placeholder.
+- `AlarmBridge.requestExactAlarmPermission` is a no-op below Android 12.
+
+**Verified.** `compileDebugKotlin` OK; `lintDebug` → 0 errors (was 2); the
+remaining warnings are cosmetic (button styles, overdraw, icon) plus
+dependency-update notices.
+**Not verified.** On-device: two overlapping alarms, the 10-minute
+timeout, and the 8.0 code path.
+
 ## 2026-10-02 — Step 10: Android alarms silently lost
 
 **Problem.**

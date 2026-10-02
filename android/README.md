@@ -76,7 +76,10 @@ of narrow screens.
   - `AlarmReceiver.kt` posts a full-screen-intent notification when the
     alarm fires; `AlarmRingActivity.kt` is the actual ringing screen
     (shows over the lock screen, loops the default alarm sound, vibrates,
-    Snooze/Dismiss).
+    Snooze/Dismiss — Back is ignored, as in the built-in Clock app). An
+    alarm that fires while another is ringing joins the same screen;
+    unanswered alarms silence after 10 minutes and leave a "Missed alarm"
+    notification.
   - Requires runtime `POST_NOTIFICATIONS` (Android 13+) and the
     `SCHEDULE_EXACT_ALARM` special access (Settings > Apps > Special app
     access > Alarms & reminders) for precise timing; the UI prompts for

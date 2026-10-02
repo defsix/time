@@ -2,6 +2,7 @@ package io.defsix.time.alarm
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -38,6 +39,9 @@ class AlarmBridge(private val activity: MainActivity, private val webView: WebVi
 
     @JavascriptInterface
     fun requestExactAlarmPermission() {
+        // The settings screen only exists from Android 12; before that exact
+        // alarms need no permission, and launching it would crash.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         activity.runOnUiThread {
             val intent = Intent(
                 Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
