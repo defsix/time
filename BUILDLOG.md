@@ -2,6 +2,27 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 3: alarms an hour off on DST-transition days
+
+**Problem.** `zonedWallTimeToUtc` corrected the wall time by the zone's
+offset measured at the wrong instant (the wall time read as if it were UTC).
+When a DST change fell between that instant and the real one, the alarm was
+an hour off — e.g. New York 04:00 on spring-forward day rang at 05:00;
+Berlin 01:30 rang at 00:30.
+
+**Change.**
+- `alarmTime.ts`: try the offsets in effect just before and just after any
+  nearby transition and keep the one(s) that read back as the requested wall
+  time. Repeated hour (autumn) → first occurrence; skipped hour (spring) →
+  shifted later by the gap (02:30 → 03:30), as Temporal does by default.
+- Added **vitest** (v5, works with the existing Vite 6.4) and `npm test`.
+- `src/lib/alarmTime.test.ts`: 10 tests — normal, month/year rollover,
+  half-hour offset, five DST-day cases in three hemispheres/zones, repeated
+  and skipped hours.
+
+**Verified.** `npm test` 10/10 pass; the same tests against the old code →
+6 fail (so they genuinely catch the bug). `npm run lint`, `tsc -b` clean.
+
 ## 2026-10-02 — Step 2: Android location permission on Android 12+
 
 **Problem.** `MainActivity` requested `ACCESS_FINE_LOCATION` on its own.
