@@ -2,6 +2,36 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 7: iOS `LocalSchemeHandler` traversal and task race
+
+**Problem.**
+- *Traversal:* the requested path was appended to `www/` unchecked. On
+  iOS 16 (the deployment target) `URL.path` percent-decodes `%2F`, so
+  `app://local/..%2F..%2Fx` could read files outside `www/`. (Newer
+  Foundation — e.g. on Linux, and likely iOS 17+ — keeps `%2F` encoded, so
+  exploitability varies by OS; only script already in the page could ask.)
+- *Race:* `stop` recorded cancellation asynchronously, so an in-flight
+  request could still call `didReceive` on a task WebKit had already stopped
+  (WebKit raises an exception → crash). Cancelled IDs were also never
+  removed, so a later task reusing the same address could hang forever.
+
+**Change.**
+- New `LocalSchemeHandler.resolveFile(requestPath:in:)`: standardises and
+  resolves symlinks, then requires the result to stay inside `www/` (the
+  root is resolved once at init, so `/var` vs `/private/var` compare equal).
+- All `WKURLSchemeTask` calls now happen on the main thread (where WebKit
+  calls `start`/`stop`), gated on an `activeTasks` set that both completion
+  and `stop` remove from — no window for a stopped task to be called, and no
+  IDs left behind. File I/O stays on the background queue.
+
+**Verified.** `resolveFile` extracted verbatim from the source and run under
+Swift 6.1.2 on Linux against a temp tree: `..%2F`, `%2E%2E/`, already-decoded
+`/../`, a sibling-prefix trick (`/../www2/...`) and a symlink pointing outside
+`www/` are all refused; `/`, `index.html`, `assets/./a.js` resolve correctly.
+`swiftc -parse` OK.
+**Not verified.** The main-thread task handling needs a device/simulator
+(no WebKit on Linux).
+
 ## 2026-10-02 — Step 6: native bridges only answer the app's own page
 
 **Problem (latent).** Android's `addJavascriptInterface` bridges and iOS's

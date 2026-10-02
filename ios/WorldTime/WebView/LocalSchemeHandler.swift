@@ -26,15 +26,34 @@ final class LocalSchemeHandler: NSObject, WKURLSchemeHandler {
         return isAppURL(url)
     }
 
+    /// Maps a request path to a file inside `root`, or nil if it would land
+    /// outside it. `URL.path` percent-decodes, so a request for
+    /// `app://local/..%2F..%2Fsomething` arrives here as `/../../something` —
+    /// without this check it could read any file the app's sandbox can.
+    /// `root` must already be standardized and symlink-resolved.
+    static func resolveFile(requestPath: String, in root: URL) -> URL? {
+        let relativePath = requestPath.isEmpty || requestPath == "/" ? "index.html" : String(requestPath.dropFirst())
+        let candidate = root.appendingPathComponent(relativePath).standardizedFileURL.resolvingSymlinksInPath()
+        guard candidate.path.hasPrefix(root.path + "/") else { return nil }
+        return candidate
+    }
+
     private let wwwDirectory: URL
     private let queue = DispatchQueue(label: "io.defsix.time.local-scheme-handler")
-    private var cancelledTasks = Set<ObjectIdentifier>()
+    /// Tasks WebKit has started and not yet stopped. Only touched on the main
+    /// thread — where WebKit calls start/stop — and every WKURLSchemeTask
+    /// call is made there too, after checking membership: calling one on a
+    /// task WebKit has already stopped raises an exception (an app crash).
+    private var activeTasks = Set<ObjectIdentifier>()
 
     override init() {
         guard let resourceURL = Bundle.main.resourceURL else {
             fatalError("Bundle has no resourceURL")
         }
+        // Resolved once so containment checks compare like with like (on
+        // device the bundle lives under /var, a symlink to /private/var).
         wwwDirectory = resourceURL.appendingPathComponent("www", isDirectory: true)
+            .standardizedFileURL.resolvingSymlinksInPath()
         super.init()
     }
 
@@ -44,43 +63,33 @@ final class LocalSchemeHandler: NSObject, WKURLSchemeHandler {
             return
         }
         let taskID = ObjectIdentifier(urlSchemeTask)
+        activeTasks.insert(taskID)
 
         queue.async { [self] in
-            guard !cancelledTasks.contains(taskID) else { return }
+            let fileURL = Self.resolveFile(requestPath: requestURL.path, in: wwwDirectory)
+            let data = fileURL.flatMap { try? Data(contentsOf: $0) }
 
-            var relativePath = requestURL.path
-            if relativePath.isEmpty || relativePath == "/" {
-                relativePath = "/index.html"
-            }
-            let fileURL = wwwDirectory.appendingPathComponent(String(relativePath.dropFirst()))
-
-            guard let data = try? Data(contentsOf: fileURL) else {
-                if !cancelledTasks.contains(taskID) {
+            DispatchQueue.main.async { [self] in
+                guard activeTasks.remove(taskID) != nil else { return }
+                guard let fileURL, let data else {
                     urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
+                    return
                 }
-                return
+                let response = URLResponse(
+                    url: requestURL,
+                    mimeType: mimeType(for: fileURL.pathExtension),
+                    expectedContentLength: data.count,
+                    textEncodingName: "utf-8"
+                )
+                urlSchemeTask.didReceive(response)
+                urlSchemeTask.didReceive(data)
+                urlSchemeTask.didFinish()
             }
-
-            guard !cancelledTasks.contains(taskID) else { return }
-
-            let response = URLResponse(
-                url: requestURL,
-                mimeType: mimeType(for: fileURL.pathExtension),
-                expectedContentLength: data.count,
-                textEncodingName: "utf-8"
-            )
-            urlSchemeTask.didReceive(response)
-            urlSchemeTask.didReceive(data)
-            urlSchemeTask.didFinish()
-            cancelledTasks.remove(taskID)
         }
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
-        let taskID = ObjectIdentifier(urlSchemeTask)
-        queue.async { [self] in
-            cancelledTasks.insert(taskID)
-        }
+        activeTasks.remove(ObjectIdentifier(urlSchemeTask))
     }
 
     private func mimeType(for pathExtension: String) -> String {
