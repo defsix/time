@@ -133,16 +133,23 @@ Signing is optional and never committed:
   copy [`keystore.properties.example`](keystore.properties.example) to
   `keystore.properties` (gitignored) and fill in the real paths/passwords,
   then `./gradlew assembleRelease` produces a signed `.apk`.
-- **In CI:** [`android-build.yml`](../.github/workflows/android-build.yml) also
-  builds `assembleRelease` on every push/PR. Set these repo secrets once a
-  real release keystore exists — `ANDROID_KEYSTORE_BASE64` (`base64 -w0 release.jks`),
-  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` —
-  and the workflow decodes and signs with it automatically.
-- **Without either:** the release build type falls back to debug signing, so
-  `assembleRelease` still succeeds on ordinary branch/PR builds (useful for
-  smoke-testing the minified build shape) — **except** on a tagged release
-  push (`v*`), where a missing keystore secret fails the build instead of
-  silently publishing a debug-signed APK as "the" signed release.
+- **In CI:** [`android-build.yml`](../.github/workflows/android-build.yml)
+  builds `assembleRelease -PunsignedRelease` on every push/PR, which emits an
+  *unsigned* APK (smoke-testing the minified build shape). On a `v*` tag, a
+  separate `sign-release` job signs that APK with the Android SDK's
+  `apksigner` — the build job, which runs all the npm/Gradle dependency code,
+  never sees the key, and the signing job runs no repository or dependency
+  code at all. Set these secrets once a real release keystore exists —
+  `ANDROID_KEYSTORE_BASE64` (`base64 -w0 release.jks`),
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+  They work as repo secrets, but are better kept as secrets of the
+  `android-release` environment (Settings → Environments), restricted to
+  `v*` tags and ideally with a required reviewer, so nothing else in the repo
+  can read them.
+- **Without either:** a local `assembleRelease` falls back to debug signing,
+  so it still succeeds (useful for smoke-testing). A tagged release push
+  (`v*`) with no keystore secret fails instead of publishing an unsigned or
+  debug-signed APK as "the" signed release.
 
 **Cutting a release:** bump `versionCode`/`versionName` in
 `app/build.gradle.kts` (must increase, or Android refuses to update over an
