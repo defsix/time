@@ -27,7 +27,7 @@ order of priority. Details of each completed step are in
 - [x] 13. iOS alarms are ordinary notifications — documented; AlarmKit is a follow-up (owner's decision)
 - [x] 14. Alarm panel: empty time input, overlapping permission requests, list shows wrong zone (+ inexact window rang early, not late)
 - [x] 15. Globe re-uploads GPU buffers every frame; incomplete clean-up
-- [ ] 16. Time sync keeps polling in background tabs
+- [x] 16. Time sync keeps polling in background tabs
 
 ## CI / release
 

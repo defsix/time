@@ -2,6 +2,27 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 16: time sync paused in the background
+
+**Problem.** The 90 s re-check (three third-party requests) kept running in
+background tabs and with the mobile apps backgrounded — battery and data
+spent on numbers nobody sees.
+
+**Change.** `useTimeSources`: the interval only re-syncs while
+`document.visibilityState === 'visible'`; on becoming visible it re-syncs
+at once if one is due (≥ 90 s since the last). Privacy policy wording
+updated ("every 90 seconds while it's on screen").
+
+**Verified.** Lint, `tsc -b`, build. Headless Chromium with Playwright's fake
+clock, counting requests to the three APIs (new vs old build):
+
+| | old | new |
+|---|---|---|
+| On load | 3 | 3 |
+| +90 s visible | 6 | 6 |
+| +7.5 min hidden | 21 | 6 |
+| Back to visible | 21 | 9 (immediate catch-up) |
+
 ## 2026-10-02 — Step 15: Globe GPU churn, clean-up and needless rebuilds
 
 **Problem.**
