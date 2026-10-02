@@ -42,8 +42,13 @@ class MainActivity : AppCompatActivity() {
     private var safeAreaTopPx = 0
     private var safeAreaBottomPx = 0
 
+    // Fine and coarse must be requested together: on Android 12+ the system
+    // silently ignores a request for ACCESS_FINE_LOCATION on its own, and the
+    // user may grant only approximate location — which is plenty for picking
+    // the nearest city, so either grant counts.
     private val locationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            val granted = results.values.any { it }
             val origin = pendingGeolocationOrigin
             val callback = pendingGeolocationCallback
             if (origin != null && callback != null) {
@@ -140,7 +145,9 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     pendingGeolocationOrigin = origin
                     pendingGeolocationCallback = callback
-                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    locationPermissionLauncher.launch(
+                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    )
                 }
             }
 
@@ -169,8 +176,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hasLocationPermission(): Boolean =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
+        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION).any {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
 
     /** Called from AlarmBridge, which runs on WebView's background thread. */
     fun requestNotificationPermission(callback: (Boolean) -> Unit) {

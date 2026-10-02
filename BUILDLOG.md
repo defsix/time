@@ -2,6 +2,24 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 2: Android location permission on Android 12+
+
+**Problem.** `MainActivity` requested `ACCESS_FINE_LOCATION` on its own.
+Since Android 12, for apps targeting API 31+, the system ignores that request
+(it must be paired with `ACCESS_COARSE_LOCATION`), so the permission dialog
+never appeared and geolocation always failed. It also only *checked* for
+FINE, so a user who chose "Approximate" was treated as having refused.
+
+**Change.** Request both with `RequestMultiplePermissions`; treat either
+grant as success (approximate is enough to pick the nearest city), both when
+checking and when handling the result.
+
+**Verified.** `./gradlew compileDebugKotlin` compiles.
+**Not verified.** On-device behaviour (no emulator in this container) —
+check on an Android 12+ phone: fresh install → the location dialog now
+appears offering Precise/Approximate; either choice flies the globe to the
+nearest city.
+
 ## 2026-10-02 — Step 1: isolate the Android release signing key in CI
 
 **Problem.** The single `build` job in `android-build.yml` ran `npm ci`, the
