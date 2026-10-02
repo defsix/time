@@ -110,6 +110,19 @@ export const TIME_SOURCE_DEFS: TimeSourceDef[] = [
 // requires a server-side proxy that speaks NTP and re-exposes it over HTTPS,
 // which is out of scope for this static site.
 
+// Bounds for a parsed source time, independent of the device clock (which
+// may legitimately be far off — correcting that is the point). Anything
+// outside is a parser/payload problem (a renamed field, seconds read as ms),
+// and must fail that source rather than poison the consensus: a NaN offset
+// would turn every displayed time into an Invalid Date, which throws when
+// formatted and blanks the page.
+const MIN_PLAUSIBLE_SOURCE_MS = Date.UTC(2020, 0, 1)
+const MAX_PLAUSIBLE_SOURCE_MS = Date.UTC(2100, 0, 1)
+
+export function isPlausibleSourceTime(ms: number): boolean {
+  return Number.isFinite(ms) && ms >= MIN_PLAUSIBLE_SOURCE_MS && ms < MAX_PLAUSIBLE_SOURCE_MS
+}
+
 function extractTimingBreakdown(url: string, sinceTime: number): TimingBreakdown | null {
   const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
   const candidates = entries.filter((e) => e.name === url && e.startTime >= sinceTime - 50)
@@ -166,6 +179,7 @@ async function measureSource(def: TimeSourceDef): Promise<TimeSourceResult> {
       const body = await res.text()
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const sourceMs = def.parse(body, res.headers)
+      if (!isPlausibleSourceTime(sourceMs)) throw new Error('unexpected payload')
       const roundTrip = t1 - t0
       const estimatedSourceNowAtT1 = sourceMs + roundTrip / 2
       const localNowAtT1 = Date.now()
@@ -216,7 +230,7 @@ export async function measureAllSources(
 // so one noisy/slow API can't single-handedly skew the corrected clock.
 export function computeConsensusOffset(results: TimeSourceResult[]): number | null {
   const offsets = results
-    .filter((r) => r.status === 'ok' && r.id !== 'device' && r.offsetMs !== null)
+    .filter((r) => r.status === 'ok' && r.id !== 'device' && Number.isFinite(r.offsetMs))
     .map((r) => r.offsetMs as number)
   if (offsets.length === 0) return null
   offsets.sort((a, b) => a - b)

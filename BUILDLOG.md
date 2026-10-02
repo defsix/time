@@ -2,6 +2,29 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-02 — Step 5: malformed time-API payload blanking the page
+
+**Problem.** Source parsers weren't validated: a 200 response with an
+unexpected body (e.g. `{}` from TimeAPI.io) parsed to `NaN`, the source was
+still marked `ok`, and `computeConsensusOffset` only filtered out `null` —
+so the consensus became `NaN`, `correctedNow()` an Invalid Date, and
+formatting it threw during render. Most likely to bite US users, for whom
+Binance returns HTTP 451 and only two sources remain.
+
+**Change.**
+- `timeSources.ts`: `isPlausibleSourceTime` — finite and between 2020 and
+  2100 (deliberately *not* bounded against the device clock, which may be
+  legitimately far off); a failing parse marks the source `error`
+  (`unexpected payload`). Consensus now requires `Number.isFinite`.
+- `useTimeSources.ts`: `correctedNow()` ignores a non-finite offset as a
+  last line of defence.
+- `timeSources.test.ts`: plausibility bounds, NaN-safe consensus, and a
+  stubbed-`fetch` run of the review's scenario (Binance 451 + `{}` body).
+
+**Verified.** `npm test` 29/29; the new scenario tests fail against the old
+code. Headless Chromium with the three APIs intercepted (`{}` / 451 /
+valid) → page renders, clocks tick, consensus finite.
+
 ## 2026-10-02 — Step 4: crafted share links (and blocked storage) blanking the page
 
 **Problem.** `?tz=Foo/Bar` reached `Intl.DateTimeFormat` during render,

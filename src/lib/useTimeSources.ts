@@ -46,8 +46,8 @@ export function useTimeSources() {
 
   // Corrected "now" = device clock adjusted by the consensus offset from network sources.
   const correctedNow = useCallback((): Date => {
-    const offset = consensusOffsetRef.current ?? 0
-    return new Date(Date.now() - offset)
+    const offset = consensusOffsetRef.current
+    return new Date(Date.now() - (offset !== null && Number.isFinite(offset) ? offset : 0))
   }, [])
 
   const consensusOffset = consensusOffsetRef.current
