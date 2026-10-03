@@ -2,6 +2,20 @@
 
 Newest first. One entry per completed [ROADMAP.md](ROADMAP.md) step.
 
+## 2026-10-03 — Version bump for release (v1.5)
+
+**Problem.** `versionCode 5` / `versionName "1.4"` were unchanged since the
+v1.4 release. Tagging `v1.5` as-is would have produced
+`world-time-v1.4.apk`, and Android refuses an update whose `versionCode`
+isn't higher than the installed one.
+
+**Change.** `versionCode 6` / `versionName "1.5"`; README changelog entry
+dated to the merge day (2026-10-03) and notes the bump.
+
+**Verified.** `./gradlew assembleRelease -PunsignedRelease` →
+`world-time-v1.5.apk`; `aapt2 dump badging` on it and on the debug APK shows
+`versionCode='6' versionName='1.5'`.
+
 ## 2026-10-02 — PR #42 CI: Android build failed at SDK setup
 
 **Problem.** `android-build` → `build` failed in `android-actions/setup-android`

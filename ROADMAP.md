@@ -33,6 +33,11 @@ order of priority. Details of each completed step are in
 
 - [x] 17. Debug-APK key consistency, signing-cert fingerprint, Node 20 EOL + action majors, wrapper checksum, Pages permissions, dev-dep audit, tests in CI
 
+## Release
+
+- [x] Bump Android to `versionCode 6` / `versionName "1.5"`
+- [ ] Tag `v1.5` to build the signed release APK (owner)
+
 ## Follow-ups (outside this pass)
 
 - [ ] iOS: adopt AlarmKit (iOS 26+) for real alarms, keeping notifications as the fallback — needs Xcode 26 (CI runner upgrade) and on-device testing

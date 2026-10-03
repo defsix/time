@@ -121,9 +121,10 @@ Pages via `.github/workflows/deploy-pages.yml`.
 
 ## Changelog
 
-### 2026-10-02
+### 2026-10-03
 
-Fixes from a full bug & security review (details per step in
+Android bumped to `versionCode 6` / `versionName "1.5"`, ready for a `v1.5`
+tag. Fixes from a full bug & security review (details per step in
 [`BUILDLOG.md`](BUILDLOG.md), status in [`ROADMAP.md`](ROADMAP.md)):
 
 - **Alarms ring at the right time on DST-change days.** City alarms could
