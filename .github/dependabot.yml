@@ -1,0 +1,12 @@
+# Keeps the SHA-pinned GitHub Actions current: Dependabot understands the
+# "@<sha> # vX.Y.Z" form, bumps both, and each bump arrives as a PR that CI
+# builds before anything is merged.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

@@ -2,6 +2,7 @@ package io.defsix.time.alarm
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -38,6 +39,9 @@ class AlarmBridge(private val activity: MainActivity, private val webView: WebVi
 
     @JavascriptInterface
     fun requestExactAlarmPermission() {
+        // The settings screen only exists from Android 12; before that exact
+        // alarms need no permission, and launching it would crash.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         activity.runOnUiThread {
             val intent = Intent(
                 Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
@@ -48,11 +52,14 @@ class AlarmBridge(private val activity: MainActivity, private val webView: WebVi
     }
 
     @JavascriptInterface
-    fun scheduleAlarm(id: String, cityLabel: String, epochMillis: Double, label: String): String {
+    fun scheduleAlarm(id: String, cityLabel: String, epochMillis: Double, label: String, timeZone: String): String {
+        // NaN.toLong() is 0 (1970), which would ring immediately; throwing
+        // surfaces in JS as an exception the alarm panel reports.
+        require(epochMillis.isFinite()) { "Invalid alarm time" }
         if (!NotificationManagerCompat.from(activity).areNotificationsEnabled()) {
             return "needs_notification_permission"
         }
-        val alarm = StoredAlarm(id = id, cityLabel = cityLabel, epochMillis = epochMillis.toLong(), label = label)
+        val alarm = StoredAlarm(id = id, cityLabel = cityLabel, epochMillis = epochMillis.toLong(), label = label, timeZone = timeZone)
         store.add(alarm)
         val exact = AlarmScheduler.schedule(activity, alarm)
         return if (exact) "ok" else "ok_inexact"

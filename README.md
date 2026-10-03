@@ -54,6 +54,7 @@ Note: real NTP servers (`pool.ntp.org`, `time.windows.com`, etc.) are deliberate
 - [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/), built with [Vite](https://vite.dev/)
 - [Three.js](https://threejs.org/) for the globe (custom shader for the photoreal day/night terminator, terrain relief and ocean specular, hand-derived great-circle camera animation, world-atlas country border data). Earth/cloud textures are the same NASA-sourced imagery bundled with three.js's own official examples.
 - No backend — a static site deployed to [GitHub Pages](https://pages.github.com/) via GitHub Actions
+- [Vitest](https://vitest.dev/) unit tests for the time/alarm logic, share links and storage handling
 - `city-timezones` (bundled, code-split) for the ~7,300-city search index
 
 ## Mobile apps
@@ -67,14 +68,18 @@ automatically:
   [`android/README.md`](android/README.md).
   **Signed release (recommended):**
   <https://github.com/defsix/time/releases/latest> — the actual
-  distribution build, sideload it directly.
+  distribution build, sideload it directly. To check a download really
+  came from this repo's CI (GitHub CLI):
+  `gh attestation verify world-time-v*.apk -R defsix/time`.
   [Latest debug build](https://github.com/defsix/time/releases/download/android-debug-latest/app-debug.apk)
   is also available (rebuilt on every push to `main`), useful for testing
   in-progress changes but not signed for real use.
 - [`ios/`](ios/) — Swift/SwiftUI, `WKWebView` + a custom `app://` scheme
   handler, a CoreLocation-backed geolocation bridge, and the same city
   alarms / Nightstand mode as Android (backed by local notifications
-  instead of `AlarmManager`). See [`ios/README.md`](ios/README.md).
+  instead of `AlarmManager` — so, unlike Android's, they're muted by the
+  silent switch and Focus; see the limitation note in
+  [`ios/README.md`](ios/README.md)).
 
 ## Getting started
 
@@ -83,9 +88,13 @@ npm install
 npm run dev      # start the dev server
 npm run build    # type-check + production build to dist/
 npm run preview  # preview the production build locally
+npm test         # unit tests (Vitest)
+npm run lint     # ESLint
 ```
 
-Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/workflows/deploy-pages.yml`.
+Pull requests run lint, tests and a build (`.github/workflows/web-checks.yml`).
+Pushing to `main` runs the same checks, then builds and deploys to GitHub
+Pages via `.github/workflows/deploy-pages.yml`.
 
 ## Screenshots
 
@@ -111,6 +120,41 @@ Pushing to `main` automatically builds and deploys to GitHub Pages via `.github/
 </details>
 
 ## Changelog
+
+### 2026-10-03
+
+Android bumped to `versionCode 6` / `versionName "1.5"`, ready for a `v1.5`
+tag. Fixes from a full bug & security review (details per step in
+[`BUILDLOG.md`](BUILDLOG.md), status in [`ROADMAP.md`](ROADMAP.md)):
+
+- **Alarms ring at the right time on DST-change days.** City alarms could
+  fire an hour early or late on the day clocks change (e.g. New York 04:00
+  rang at 05:00); now covered by unit tests. Alarm lists show each alarm in
+  its own city's time zone.
+- **No more blank pages.** A crafted share link (`?tz=` with an unknown zone),
+  blocked browser storage, or a time API returning an unexpected payload
+  could each blank the whole page; inputs are now validated and an error
+  screen with *Start over* catches anything else.
+- **Privacy.** The nearest city picked from your location no longer goes
+  into the page address (only *Copy link* shares it), and no longer
+  overrides a city you picked yourself. The privacy policy now accurately
+  lists what's stored on the device and the OS backup caveat. Time sync
+  pauses while the page is in the background.
+- **Android:** location works on Android 12+ (it was never prompted for);
+  alarms survive force-stops, revoked/granted exact-alarm access and
+  overnight reboots before unlock; the ringing screen no longer crashes on
+  Android 8.0, ignores Back, handles two alarms at once and silences after
+  10 minutes; the WebView only ever shows the bundled app.
+- **iOS:** the web view only ever shows the bundled app and the bridges only
+  answer it; the local file server is confined to its web root; fired alarms
+  leave the list; the docs now state plainly that iOS alarms are
+  notifications (AlarmKit is a planned follow-up).
+- **CI / releases:** the release signing key is isolated from all build
+  dependencies (separate build / sign / publish jobs), every action is
+  pinned to a commit SHA (kept current by Dependabot), the Gradle wrapper is
+  validated and checksummed, releases carry a verifiable build-provenance
+  attestation, debug builds can be signed with a stable key so they upgrade
+  in place, workflows run on Node 24, and lint/tests gate PRs and deploys.
 
 ### 2026-08-19
 

@@ -2,6 +2,7 @@ package io.defsix.time.alarm
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.os.UserManagerCompat
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -10,6 +11,8 @@ data class StoredAlarm(
     val cityLabel: String,
     val epochMillis: Long,
     val label: String,
+    /** IANA zone the alarm was set in (for display); null for alarms stored by older versions. */
+    val timeZone: String? = null,
 )
 
 /**
@@ -17,10 +20,23 @@ data class StoredAlarm(
  * AlarmManager itself doesn't let you enumerate what's currently scheduled,
  * and this list is also what BootReceiver reads to reschedule everything
  * after a reboot (raw AlarmManager alarms don't survive one).
+ *
+ * Kept in device-protected storage so it's readable before the user first
+ * unlocks after a reboot (direct boot), when BootReceiver and AlarmReceiver
+ * may need it. Alarm times and labels are all it holds.
  */
 class AlarmStore(context: Context) {
-    private val prefs: SharedPreferences =
-        context.applicationContext.getSharedPreferences("city_alarms", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = run {
+        val app = context.applicationContext
+        val deviceProtected = app.createDeviceProtectedStorageContext()
+        // One-off migration from credential-encrypted storage, where earlier
+        // versions kept the list; only readable once the user has unlocked.
+        // A no-op when there's nothing left to move.
+        if (UserManagerCompat.isUserUnlocked(app)) {
+            deviceProtected.moveSharedPreferencesFrom(app, PREFS_NAME)
+        }
+        deviceProtected.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
 
     private fun readAll(): MutableList<StoredAlarm> {
         val raw = prefs.getString(KEY_ALARMS, null) ?: return mutableListOf()
@@ -32,11 +48,12 @@ class AlarmStore(context: Context) {
                 cityLabel = obj.getString("cityLabel"),
                 epochMillis = obj.getLong("epochMillis"),
                 label = obj.getString("label"),
+                timeZone = if (obj.isNull("timeZone")) null else obj.getString("timeZone"),
             )
         }
     }
 
-    private fun writeAll(alarms: List<StoredAlarm>) {
+    private fun toJsonArray(alarms: List<StoredAlarm>): JSONArray {
         val array = JSONArray()
         for (alarm in alarms) {
             array.put(
@@ -45,45 +62,39 @@ class AlarmStore(context: Context) {
                     .put("cityLabel", alarm.cityLabel)
                     .put("epochMillis", alarm.epochMillis)
                     .put("label", alarm.label)
+                    .put("timeZone", alarm.timeZone) // null removes the key
             )
         }
-        prefs.edit().putString(KEY_ALARMS, array.toString()).apply()
+        return array
     }
 
-    @Synchronized
-    fun getAll(): List<StoredAlarm> = readAll()
+    private fun writeAll(alarms: List<StoredAlarm>) {
+        prefs.edit().putString(KEY_ALARMS, toJsonArray(alarms).toString()).apply()
+    }
 
-    @Synchronized
-    fun add(alarm: StoredAlarm) {
+    // One lock for every instance: the bridge, receivers and ring screen each
+    // create their own AlarmStore, and their read-modify-write updates of
+    // the same file must not interleave (or one of them loses an alarm).
+    fun getAll(): List<StoredAlarm> = synchronized(LOCK) { readAll() }
+
+    fun add(alarm: StoredAlarm) = synchronized(LOCK) {
         val all = readAll()
         all.removeAll { it.id == alarm.id }
         all.add(alarm)
         writeAll(all)
     }
 
-    @Synchronized
-    fun remove(id: String) {
+    fun remove(id: String) = synchronized(LOCK) {
         val all = readAll()
         all.removeAll { it.id == id }
         writeAll(all)
     }
 
-    @Synchronized
-    fun toJson(): String {
-        val array = JSONArray()
-        for (alarm in readAll()) {
-            array.put(
-                JSONObject()
-                    .put("id", alarm.id)
-                    .put("cityLabel", alarm.cityLabel)
-                    .put("epochMillis", alarm.epochMillis)
-                    .put("label", alarm.label)
-            )
-        }
-        return array.toString()
-    }
+    fun toJson(): String = synchronized(LOCK) { toJsonArray(readAll()).toString() }
 
     companion object {
+        private const val PREFS_NAME = "city_alarms"
         private const val KEY_ALARMS = "alarms"
+        private val LOCK = Any()
     }
 }

@@ -17,12 +17,21 @@ import { useHourFormat } from './lib/useHourFormat'
 import { usePinnedCities } from './lib/usePinnedCities'
 import { approxSolarOffsetHours } from './lib/geo'
 import { findNearestCity } from './lib/allCities'
-import { readShareParamsFromURL, writeShareParamsToURL } from './lib/shareLink'
+import { readShareParamsFromURL, shareURLFor, writeShareParamsToURL, type ShareParams } from './lib/shareLink'
 import { t } from './lib/i18n'
 import type { City } from './lib/cities'
 import './App.css'
 
-type Selection = { kind: 'city'; city: City } | { kind: 'point'; lat: number; lon: number } | null
+// `auto` marks the nearest-city default picked from the user's location
+// rather than by the user themselves.
+type Selection = { kind: 'city'; city: City; auto?: boolean } | { kind: 'point'; lat: number; lon: number } | null
+
+function shareParamsFor(selection: Selection): ShareParams | null {
+  if (!selection) return null
+  if (selection.kind === 'point') return { lat: selection.lat, lon: selection.lon }
+  const { lat, lon, name, country, tz } = selection.city
+  return { lat, lon, name, country, tz }
+}
 
 function selectionFromShareParams(): Selection {
   const shared = readShareParamsFromURL()
@@ -47,13 +56,22 @@ export default function App() {
     return initial?.kind === 'city' ? { city: initial.city, nonce: Date.now() } : null
   })
   const [nightstandMode, setNightstandMode] = useState(false)
-  const hasSharedSelectionRef = useRef(selection !== null)
+  // Set once a selection came from a shared link or the user's own pick, so
+  // a slow geolocation fix (plus the city dataset it waits on) can't then
+  // replace it with the nearest city.
+  const userChoseRef = useRef(selection !== null)
 
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   function selectCity(city: City, fly: boolean) {
+    userChoseRef.current = true
     setSelection({ kind: 'city', city })
     if (fly) setFlyToRequest({ city, nonce: Date.now() })
+  }
+
+  function selectPoint(lat: number, lon: number) {
+    userChoseRef.current = true
+    setSelection({ kind: 'point', lat, lon })
   }
 
   useEffect(() => {
@@ -83,10 +101,13 @@ export default function App() {
         setGeoStatus('granted')
         // Default the second card + globe to the nearest known city so there's
         // something relevant to look at before the user searches for anything
-        // — unless a shared link already picked a selection, which wins.
-        if (hasSharedSelectionRef.current) return
+        // — unless a shared link or the user already picked a selection,
+        // which wins.
+        if (userChoseRef.current) return
         findNearestCity(lat, lon).then((nearest) => {
-          if (nearest && !hasSharedSelectionRef.current) selectCity(nearest, true)
+          if (!nearest || userChoseRef.current) return
+          setSelection({ kind: 'city', city: nearest, auto: true })
+          setFlyToRequest({ city: nearest, nonce: Date.now() })
         })
       },
       () => setGeoStatus('denied'),
@@ -94,21 +115,13 @@ export default function App() {
     )
   }, [])
 
-  // Keep the URL in sync with the current selection so it can be copied/shared.
+  // Keep the URL in sync with the current selection so it can be copied/shared
+  // — except the automatic nearest-city default: it's derived from the
+  // user's location, so it stays out of the address bar (and so out of
+  // browser history/sync and any URL they paste). Copy link still shares it,
+  // since that's an explicit choice made while looking at the card.
   useEffect(() => {
-    if (!selection) {
-      writeShareParamsToURL(null)
-    } else if (selection.kind === 'city') {
-      writeShareParamsToURL({
-        lat: selection.city.lat,
-        lon: selection.city.lon,
-        name: selection.city.name,
-        country: selection.city.country,
-        tz: selection.city.tz,
-      })
-    } else {
-      writeShareParamsToURL({ lat: selection.lat, lon: selection.lon })
-    }
+    writeShareParamsToURL(selection?.kind === 'city' && selection.auto ? null : shareParamsFor(selection))
   }, [selection])
 
   const selectedTimeZone = selection?.kind === 'city' ? selection.city.tz : undefined
@@ -157,7 +170,7 @@ export default function App() {
         <section className="globe-section">
           <Globe
             onSelectCity={(city) => selectCity(city, false)}
-            onSelectPoint={(lat, lon) => setSelection({ kind: 'point', lat, lon })}
+            onSelectPoint={selectPoint}
             selectedCityName={selection?.kind === 'city' ? selection.city.name : null}
             selectedPoint={selection?.kind === 'point' ? { lat: selection.lat, lon: selection.lon } : null}
             userLocation={userLocation}
@@ -209,7 +222,7 @@ export default function App() {
                       targetLabel={`${selection.city.name}, ${selection.city.country}`}
                     />
                   )}
-                  <CopyLinkButton />
+                  <CopyLinkButton url={shareURLFor(shareParamsFor(selection))} />
                 </>
               }
             />

@@ -14,6 +14,11 @@ export const cs: Translations = {
     footer:
       'Vytvořeno pomocí Three.js. Čas je porovnáván s TimeAPI.io, koncovým bodem synchronizace hodin Binance a HTTP službou kompatibilní s WorldTimeAPI (time.now) — podrobné technické údaje o každém zdroji najdete v panelu Zdroje času. Východ a západ slunce a měsíční fáze se počítají lokálně podle standardních slunečních/měsíčních vzorců.',
   },
+  errorBoundary: {
+    title: 'Něco se pokazilo',
+    body: 'Na stránce došlo k neočekávané chybě. Obvykle pomůže začít znovu.',
+    startOver: 'Začít znovu',
+  },
   globe: {
     sun: 'Slunce',
     moon: 'Měsíc',
@@ -55,6 +60,7 @@ export const cs: Translations = {
     enableNotifications: 'Povolit oznámení',
     exactAlarmNudge: 'Přístup k přesným budíkům nebyl udělen — budíky mohou zazvonit až s ~10min zpožděním.',
     grantExactAlarms: 'Udělit přesné budíky',
+    scheduleFailed: 'Budík se nepodařilo nastavit. Zkuste to znovu.',
   },
   nightstand: {
     exitAria: 'Ukončit noční režim',

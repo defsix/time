@@ -14,6 +14,11 @@ export interface Translations {
     geoUnsupported: string
     footer: string
   }
+  errorBoundary: {
+    title: string
+    body: string
+    startOver: string
+  }
   globe: {
     sun: string
     moon: string
@@ -54,6 +59,7 @@ export interface Translations {
     enableNotifications: string
     exactAlarmNudge: string
     grantExactAlarms: string
+    scheduleFailed: string
   }
   nightstand: {
     exitAria: string

@@ -1,20 +1,11 @@
+import { isValidTimeZone } from './timeZone'
+
 // Converts a wall-clock "HH:MM in some IANA time zone" into a real UTC
 // instant, using only Intl.DateTimeFormat (no timezone database of our own,
-// no dependency) — the same offset-correction trick date-fns-tz and friends
-// use internally. Works for any IANA zone, DST included.
-function zonedWallTimeToUtc(
-  year: number,
-  month: number, // 1-12
-  day: number,
-  hour: number,
-  minute: number,
-  timeZone: string,
-): number {
-  // First guess: treat the wall-clock fields as if they were UTC.
-  const guess = Date.UTC(year, month - 1, day, hour, minute, 0)
+// no dependency). Works for any IANA zone, DST included.
 
-  // Ask what wall-clock time that guess instant actually reads as in the
-  // target zone, then correct by the difference (its UTC offset).
+/** The zone's UTC offset (ms, local minus UTC) in effect at `instant`. */
+function offsetAt(instant: number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     hourCycle: 'h23',
@@ -24,7 +15,7 @@ function zonedWallTimeToUtc(
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-  }).formatToParts(new Date(guess))
+  }).formatToParts(new Date(instant))
   const map = Object.fromEntries(parts.map((p) => [p.type, p.value])) as Record<string, string>
   const asIfUtc = Date.UTC(
     Number(map.year),
@@ -34,7 +25,34 @@ function zonedWallTimeToUtc(
     Number(map.minute),
     Number(map.second),
   )
-  return guess + (guess - asIfUtc)
+  return asIfUtc - (instant - (((instant % 1000) + 1000) % 1000))
+}
+
+function zonedWallTimeToUtc(
+  year: number,
+  month: number, // 1-12
+  day: number,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): number {
+  const wall = Date.UTC(year, month - 1, day, hour, minute, 0)
+
+  // The offset can only be one of the values in effect just before or just
+  // after any DST change near this date. A single correction using the
+  // offset at the wrong side of the change lands an hour off, so try both
+  // and keep the ones that actually read back as the requested wall time.
+  const before = offsetAt(wall - 24 * 3600_000, timeZone)
+  const after = offsetAt(wall + 24 * 3600_000, timeZone)
+  const matches = [before, after]
+    .map((offset) => wall - offset)
+    .filter((instant) => wall - offsetAt(instant, timeZone) === instant)
+
+  // Repeated hour (clocks go back): ring at the first occurrence.
+  if (matches.length > 0) return Math.min(...matches)
+  // Skipped hour (clocks go forward): shift later by the gap, e.g. 02:30
+  // becomes 03:30 — the same choice Temporal's default disambiguation makes.
+  return wall - before
 }
 
 /**
@@ -80,4 +98,20 @@ export function nextOccurrenceEpoch(timeZone: string, hour: number, minute: numb
     minute,
     timeZone,
   )
+}
+
+/**
+ * An alarm's time for display in the zone it was set in — "Tue 07:00" for
+ * an alarm set for 7:00 in Tokyo, wherever the device is. Falls back to the
+ * device's own zone for alarms without a (known) zone.
+ */
+export function formatAlarmTime(epochMillis: number, timeZone?: string | null, hour12?: boolean): string {
+  if (!Number.isFinite(epochMillis)) return '—'
+  return new Intl.DateTimeFormat(undefined, {
+    timeZone: timeZone && isValidTimeZone(timeZone) ? timeZone : undefined,
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12,
+  }).format(new Date(epochMillis))
 }

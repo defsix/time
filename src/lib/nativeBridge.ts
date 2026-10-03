@@ -13,6 +13,8 @@ export interface CityAlarm {
   cityLabel: string
   epochMillis: number
   label: string
+  /** IANA zone the alarm was set in; absent (or null) for alarms set by older versions. */
+  timeZone?: string | null
 }
 
 export type ScheduleResult = 'ok' | 'ok_inexact' | 'needs_notification_permission'
@@ -22,7 +24,7 @@ interface AndroidAlarmBridgeNative {
   requestNotificationPermission(): void
   hasExactAlarmPermission(): boolean
   requestExactAlarmPermission(): void
-  scheduleAlarm(id: string, cityLabel: string, epochMillis: number, label: string): ScheduleResult
+  scheduleAlarm(id: string, cityLabel: string, epochMillis: number, label: string, timeZone: string): ScheduleResult
   cancelAlarm(id: string): void
   listAlarms(): string
 }
@@ -73,17 +75,24 @@ export async function hasExactAlarmPermission(): Promise<boolean> {
   return false
 }
 
+// Android answers through one global callback, so a second request made
+// while the first prompt is still open would orphan the first promise
+// (it never settled). Everyone asking in the meantime shares one request.
+let pendingAndroidPermission: Promise<boolean> | null = null
+
 /** Shows the system "allow notifications" prompt; resolves once the user answers. */
 export async function requestNotificationPermission(): Promise<boolean> {
   const android = window.AndroidAlarmBridge
   if (android) {
-    return new Promise((resolve) => {
+    pendingAndroidPermission ??= new Promise<boolean>((resolve) => {
       window.__onNotificationPermissionResult = (granted) => {
         window.__onNotificationPermissionResult = undefined
+        pendingAndroidPermission = null
         resolve(granted)
       }
       android.requestNotificationPermission()
     })
+    return pendingAndroidPermission
   }
   if (ios()) return (await ios()!('requestNotificationPermission')) as boolean
   return false
@@ -108,9 +117,10 @@ export async function scheduleCityAlarm(
   cityLabel: string,
   epochMillis: number,
   label: string,
+  timeZone: string,
 ): Promise<ScheduleResult> {
-  if (window.AndroidAlarmBridge) return window.AndroidAlarmBridge.scheduleAlarm(id, cityLabel, epochMillis, label)
-  if (ios()) return (await ios()!('scheduleAlarm', [id, cityLabel, epochMillis, label])) as ScheduleResult
+  if (window.AndroidAlarmBridge) return window.AndroidAlarmBridge.scheduleAlarm(id, cityLabel, epochMillis, label, timeZone)
+  if (ios()) return (await ios()!('scheduleAlarm', [id, cityLabel, epochMillis, label, timeZone])) as ScheduleResult
   return 'needs_notification_permission'
 }
 

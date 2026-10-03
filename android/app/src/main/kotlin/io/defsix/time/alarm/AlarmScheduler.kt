@@ -19,6 +19,7 @@ object AlarmScheduler {
     const val EXTRA_ALARM_ID = "alarm_id"
     const val EXTRA_CITY_LABEL = "city_label"
     const val EXTRA_LABEL = "label"
+    const val EXTRA_TIME_ZONE = "time_zone"
     private const val ACTION_PREFIX = "io.defsix.time.ALARM_"
     private const val INEXACT_WINDOW_MILLIS = 10 * 60_000L
 
@@ -31,7 +32,7 @@ object AlarmScheduler {
     /** Returns true if scheduled exactly, false if it fell back to an inexact window. */
     fun schedule(context: Context, alarm: StoredAlarm): Boolean {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
-        val operation = pendingIntentFor(context, alarm.id, alarm.cityLabel, alarm.label)
+        val operation = pendingIntentFor(context, alarm.id, alarm.cityLabel, alarm.label, alarm.timeZone)
 
         return if (canScheduleExact(context)) {
             val showIntent = PendingIntent.getActivity(
@@ -43,9 +44,32 @@ object AlarmScheduler {
             alarmManager.setAlarmClock(AlarmManager.AlarmClockInfo(alarm.epochMillis, showIntent), operation)
             true
         } else {
-            val windowStart = (alarm.epochMillis - INEXACT_WINDOW_MILLIS).coerceAtLeast(System.currentTimeMillis())
+            // The window opens at the alarm time, never before: the app tells
+            // the user an inexact alarm "may ring up to ~10 min late". (It
+            // used to end at the alarm time, i.e. ring up to 10 min early.)
+            val windowStart = alarm.epochMillis.coerceAtLeast(System.currentTimeMillis())
             alarmManager.setWindow(AlarmManager.RTC_WAKEUP, windowStart, INEXACT_WINDOW_MILLIS, operation)
             false
+        }
+    }
+
+    /**
+     * Re-arms every stored alarm that's still in the future and drops the
+     * ones whose time passed (one-shot alarms aren't fired late). Needed
+     * after a reboot, when exact-alarm access is granted (to upgrade inexact
+     * alarms), and on every app launch: a force-stop or revoking "Alarms &
+     * reminders" cancels all of an app's alarms without telling it.
+     * Idempotent — an alarm's PendingIntent simply replaces itself.
+     */
+    fun rescheduleAll(context: Context) {
+        val store = AlarmStore(context)
+        val now = System.currentTimeMillis()
+        for (alarm in store.getAll()) {
+            if (alarm.epochMillis <= now) {
+                store.remove(alarm.id)
+            } else {
+                schedule(context, alarm)
+            }
         }
     }
 
@@ -59,12 +83,14 @@ object AlarmScheduler {
         id: String,
         cityLabel: String? = null,
         label: String? = null,
+        timeZone: String? = null,
     ): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = ACTION_PREFIX + id
             putExtra(EXTRA_ALARM_ID, id)
             cityLabel?.let { putExtra(EXTRA_CITY_LABEL, it) }
             label?.let { putExtra(EXTRA_LABEL, it) }
+            timeZone?.let { putExtra(EXTRA_TIME_ZONE, it) }
         }
         return PendingIntent.getBroadcast(
             context,

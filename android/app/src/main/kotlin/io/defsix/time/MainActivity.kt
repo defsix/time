@@ -1,7 +1,10 @@
 package io.defsix.time
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -22,6 +25,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
 import io.defsix.time.alarm.AlarmBridge
+import io.defsix.time.alarm.AlarmScheduler
 
 /**
  * Hosts the existing World Time web app (Three.js globe, city search, time
@@ -42,8 +46,13 @@ class MainActivity : AppCompatActivity() {
     private var safeAreaTopPx = 0
     private var safeAreaBottomPx = 0
 
+    // Fine and coarse must be requested together: on Android 12+ the system
+    // silently ignores a request for ACCESS_FINE_LOCATION on its own, and the
+    // user may grant only approximate location — which is plenty for picking
+    // the nearest city, so either grant counts.
     private val locationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            val granted = results.values.any { it }
             val origin = pendingGeolocationOrigin
             val callback = pendingGeolocationCallback
             if (origin != null && callback != null) {
@@ -73,6 +82,11 @@ class MainActivity : AppCompatActivity() {
         // CSS custom properties below.
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
+        // A force-stop or revoked "Alarms & reminders" access silently
+        // cancels every scheduled alarm, and nothing re-arms them until the
+        // next reboot — so do it whenever the app is opened.
+        AlarmScheduler.rescheduleAll(this)
 
         assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", AssetsPathHandler(this))
@@ -118,6 +132,23 @@ class MainActivity : AppCompatActivity() {
                 request: WebResourceRequest
             ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
 
+            // The JS bridges below are exposed to whatever page this WebView
+            // shows, so it must only ever show the bundled app: any other
+            // URL is refused, and a link the user actually tapped opens in
+            // their browser instead.
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val url = request.url
+                if (isAppOrigin(url)) return false
+                if (request.isForMainFrame && request.hasGesture() && (url.scheme == "https" || url.scheme == "http")) {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, url))
+                    } catch (_: ActivityNotFoundException) {
+                        // No browser installed — nothing else to do with it.
+                    }
+                }
+                return true
+            }
+
             override fun onPageFinished(view: WebView, url: String?) {
                 super.onPageFinished(view, url)
                 // Re-apply on every (re)load, since a fresh document has none
@@ -135,12 +166,16 @@ class MainActivity : AppCompatActivity() {
                 origin: String,
                 callback: GeolocationPermissions.Callback
             ) {
-                if (hasLocationPermission()) {
+                if (!isAppOrigin(Uri.parse(origin))) {
+                    callback.invoke(origin, false, false)
+                } else if (hasLocationPermission()) {
                     callback.invoke(origin, true, false)
                 } else {
                     pendingGeolocationOrigin = origin
                     pendingGeolocationCallback = callback
-                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    locationPermissionLauncher.launch(
+                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    )
                 }
             }
 
@@ -168,9 +203,13 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun isAppOrigin(url: Uri): Boolean =
+        url.scheme == "https" && url.host == WebViewAssetLoader.DEFAULT_DOMAIN
+
     private fun hasLocationPermission(): Boolean =
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
+        listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION).any {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
 
     /** Called from AlarmBridge, which runs on WebView's background thread. */
     fun requestNotificationPermission(callback: (Boolean) -> Unit) {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { readStorage, writeStorage } from './storage'
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
 export type EffectiveTheme = 'light' | 'dark'
@@ -10,7 +11,7 @@ function systemTheme(): EffectiveTheme {
 }
 
 function readStoredChoice(): ThemeChoice {
-  const stored = localStorage.getItem(STORAGE_KEY)
+  const stored = readStorage(STORAGE_KEY)
   return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
 }
 
@@ -37,7 +38,7 @@ export function useTheme() {
   }, [effective])
 
   const setChoice = useCallback((next: ThemeChoice) => {
-    localStorage.setItem(STORAGE_KEY, next)
+    writeStorage(STORAGE_KEY, next)
     setChoiceState(next)
   }, [])
 

@@ -8,6 +8,8 @@ private struct StoredAlarm: Codable {
     let cityLabel: String
     let epochMillis: Double
     let label: String
+    /// IANA zone the alarm was set in (for display); nil for alarms stored by older versions.
+    let timeZone: String?
 }
 
 /// Bridges the alarm + display features `nativeBridge.ts` expects
@@ -49,6 +51,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == Self.messageHandlerName,
+              LocalSchemeHandler.isAppFrame(message.frameInfo),
               let body = message.body as? [String: Any],
               let requestID = (body["id"] as? NSNumber)?.intValue,
               let method = body["method"] as? String
@@ -73,7 +76,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
         case "cancelAlarm":
             cancelAlarm(requestID: requestID, args: args)
         case "listAlarms":
-            resolve(requestID, encodeAlarms(loadAlarms()))
+            resolve(requestID, encodeAlarms(pruneFiredAlarms()))
         case "setKeepScreenOn":
             let on = (args.first as? Bool) ?? false
             DispatchQueue.main.async { UIApplication.shared.isIdleTimerDisabled = on }
@@ -106,11 +109,13 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
               let alarmID = args[0] as? String,
               let cityLabel = args[1] as? String,
               let epochMillis = (args[2] as? NSNumber)?.doubleValue,
+              epochMillis.isFinite, // NaN would crash UNTimeIntervalNotificationTrigger
               let label = args[3] as? String
         else {
             reject(requestID, message: "Invalid scheduleAlarm arguments")
             return
         }
+        let timeZone = args.count > 4 ? args[4] as? String : nil
 
         UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
             guard let self else { return }
@@ -129,14 +134,22 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
             let request = UNNotificationRequest(identifier: alarmID, content: content, trigger: trigger)
 
-            UNUserNotificationCenter.current().add(request) { _ in }
-
-            var alarms = self.loadAlarms()
-            alarms.removeAll { $0.id == alarmID }
-            alarms.append(StoredAlarm(id: alarmID, cityLabel: cityLabel, epochMillis: epochMillis, label: label))
-            self.saveAlarms(alarms)
-
-            self.resolve(requestID, "ok")
+            // Only report success — and only list the alarm — once iOS has
+            // actually accepted the notification. Persistence happens on the
+            // main thread, like every other read/write of the stored list.
+            UNUserNotificationCenter.current().add(request) { error in
+                DispatchQueue.main.async {
+                    if let error {
+                        self.reject(requestID, message: error.localizedDescription)
+                        return
+                    }
+                    var alarms = self.loadAlarms()
+                    alarms.removeAll { $0.id == alarmID }
+                    alarms.append(StoredAlarm(id: alarmID, cityLabel: cityLabel, epochMillis: epochMillis, label: label, timeZone: timeZone))
+                    self.saveAlarms(alarms)
+                    self.resolve(requestID, "ok")
+                }
+            }
         }
     }
 
@@ -154,6 +167,17 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
 
     // MARK: - Persistence
 
+    /// Fired alarms are never removed otherwise — there's no callback for a
+    /// notification delivered while the app isn't running — so drop any
+    /// whose time has passed whenever the list is read.
+    private func pruneFiredAlarms() -> [StoredAlarm] {
+        let nowMillis = Date().timeIntervalSince1970 * 1000
+        let alarms = loadAlarms()
+        let pending = alarms.filter { $0.epochMillis > nowMillis }
+        if pending.count != alarms.count { saveAlarms(pending) }
+        return pending
+    }
+
     private func loadAlarms() -> [StoredAlarm] {
         guard let data = UserDefaults.standard.data(forKey: Self.alarmsDefaultsKey),
               let alarms = try? JSONDecoder().decode([StoredAlarm].self, from: data)
@@ -168,7 +192,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
 
     private func encodeAlarms(_ alarms: [StoredAlarm]) -> [[String: Any]] {
         alarms.map {
-            ["id": $0.id, "cityLabel": $0.cityLabel, "epochMillis": $0.epochMillis, "label": $0.label]
+            ["id": $0.id, "cityLabel": $0.cityLabel, "epochMillis": $0.epochMillis, "label": $0.label, "timeZone": $0.timeZone ?? NSNull()]
         }
     }
 
@@ -185,8 +209,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
     private func respond(_ requestID: Int, resultJSON: String?, errorMessage: String?) {
         DispatchQueue.main.async {
             if let errorMessage {
-                let escaped = errorMessage.replacingOccurrences(of: "\"", with: "\\\"")
-                self.webView?.evaluateJavaScript("window.__worldTimeBridgeReject(\(requestID), \"\(escaped)\")")
+                self.webView?.evaluateJavaScript("window.__worldTimeBridgeReject(\(requestID), \(javaScriptStringLiteral(errorMessage)))")
             } else {
                 self.webView?.evaluateJavaScript("window.__worldTimeBridgeResolve(\(requestID), \(resultJSON ?? "null"))")
             }
@@ -203,10 +226,7 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
         case let bool as Bool:
             return bool ? "true" : "false"
         case let string as String:
-            guard let data = try? JSONSerialization.data(withJSONObject: [string]),
-                  let arrayJSON = String(data: data, encoding: .utf8)
-            else { return "null" }
-            return String(arrayJSON.dropFirst().dropLast())
+            return javaScriptStringLiteral(string)
         default:
             guard JSONSerialization.isValidJSONObject(value),
                   let data = try? JSONSerialization.data(withJSONObject: value),
@@ -215,4 +235,14 @@ final class NativeBridge: NSObject, WKScriptMessageHandler, UNUserNotificationCe
             return json
         }
     }
+}
+
+/// `string` as a quoted, fully escaped JavaScript string literal, for
+/// splicing into evaluateJavaScript calls. (JSON string syntax is valid JS;
+/// JSONSerialization only takes a top-level array, hence the wrap/unwrap.)
+func javaScriptStringLiteral(_ string: String) -> String {
+    guard let data = try? JSONSerialization.data(withJSONObject: [string]),
+          let arrayJSON = String(data: data, encoding: .utf8)
+    else { return "\"\"" }
+    return String(arrayJSON.dropFirst().dropLast())
 }

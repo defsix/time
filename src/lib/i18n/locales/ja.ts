@@ -14,6 +14,11 @@ export const ja: Translations = {
     footer:
       'Three.js で構築。時刻は TimeAPI.io、Binance の時刻同期エンドポイント、WorldTimeAPI 互換の HTTP 時刻サービス（time.now）と照合しています — 各ソースの技術的な詳細はタイムソースパネルをご覧ください。日の出・日の入り・月相はローカルで標準的な太陽・月の計算式から算出しています。',
   },
+  errorBoundary: {
+    title: '問題が発生しました',
+    body: '予期しないエラーが発生しました。最初からやり直すと、たいてい解決します。',
+    startOver: '最初からやり直す',
+  },
   globe: {
     sun: '太陽',
     moon: '月',
@@ -55,6 +60,7 @@ export const ja: Translations = {
     enableNotifications: '通知を有効にする',
     exactAlarmNudge: '正確なアラームへのアクセスが許可されていません — アラームが最大約10分遅れて鳴ることがあります。',
     grantExactAlarms: '正確なアラームを許可',
+    scheduleFailed: 'アラームを設定できませんでした。もう一度お試しください。',
   },
   nightstand: {
     exitAria: 'ナイトスタンドモードを終了',

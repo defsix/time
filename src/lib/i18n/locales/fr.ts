@@ -14,6 +14,11 @@ export const fr: Translations = {
     footer:
       "Réalisé avec Three.js. L'heure est recoupée avec TimeAPI.io, le service de synchronisation d'horloge de Binance et un service HTTP compatible WorldTimeAPI (time.now) — voir le panneau Sources horaires pour les détails techniques en direct de chacune. Le lever, le coucher du soleil et la phase lunaire sont calculés localement à partir de formules solaires/lunaires standards.",
   },
+  errorBoundary: {
+    title: 'Un problème est survenu',
+    body: 'La page a rencontré une erreur inattendue. Recommencer règle généralement le problème.',
+    startOver: 'Recommencer',
+  },
   globe: {
     sun: 'Soleil',
     moon: 'Lune',
@@ -55,6 +60,7 @@ export const fr: Translations = {
     enableNotifications: 'Activer les notifications',
     exactAlarmNudge: "L'accès aux alarmes exactes n'est pas accordé — les alarmes peuvent sonner jusqu'à ~10 min en retard.",
     grantExactAlarms: 'Accorder les alarmes exactes',
+    scheduleFailed: "Impossible de régler l'alarme. Réessayez.",
   },
   nightstand: {
     exitAria: 'Quitter le mode chevet',

@@ -25,6 +25,7 @@ final class GeolocationBridge: NSObject, WKScriptMessageHandler, CLLocationManag
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == Self.messageHandlerName,
+              LocalSchemeHandler.isAppFrame(message.frameInfo),
               let body = message.body as? [String: Any],
               let requestID = (body["id"] as? NSNumber)?.intValue
         else { return }
@@ -81,8 +82,7 @@ final class GeolocationBridge: NSObject, WKScriptMessageHandler, CLLocationManag
     }
 
     private func reject(_ requestID: Int, code: Int, message: String) {
-        let escaped = message.replacingOccurrences(of: "\"", with: "\\\"")
-        let js = "window.__worldTimeRejectGeolocation(\(requestID), \(code), \"\(escaped)\")"
+        let js = "window.__worldTimeRejectGeolocation(\(requestID), \(code), \(javaScriptStringLiteral(message)))"
         webView?.evaluateJavaScript(js)
     }
 }

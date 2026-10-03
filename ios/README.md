@@ -30,6 +30,11 @@ panel are the same React/Three.js code that runs on the live site.
   time-sync APIs a stable, non-null origin instead. This mirrors why the
   Android build uses `WebViewAssetLoader`'s synthetic https origin rather
   than `file://`.
+- **The web view only ever shows the bundled app.** The message handlers
+  and injected shims are available to whatever page is loaded, so
+  `WebViewController`'s `WKNavigationDelegate` cancels any navigation outside
+  `app://local` (a link the user taps opens in Safari instead), and both
+  bridges ignore messages that don't come from the app's own main frame.
 - **Geolocation bridge.** Unlike Android's `WebView`, `WKWebView` has no
   built-in Geolocation Web API at all. [`geolocation-shim.js`](WorldTime/WebView/geolocation-shim.js)
   (injected as a `WKUserScript`) replaces `navigator.geolocation` with a
@@ -60,9 +65,8 @@ implemented here too, sharing the same web-side code
   `NativeBridge.swift` calls back with `evaluateJavaScript`.
   `nativeBridge.ts` wraps both shapes behind one Promise-based API so the
   UI components don't need to know which platform they're on.
-- **Alarms are local notifications, not "AlarmManager".** iOS has no
-  scheduled-exact-alarm API for third-party apps; a one-shot
-  `UNTimeIntervalNotificationTrigger` fires at an absolute instant instead,
+- **Alarms are local notifications, not "AlarmManager".** A one-shot
+  `UNTimeIntervalNotificationTrigger` fires at an absolute instant,
   computed the same way as Android (`src/lib/alarmTime.ts` converts the
   target city's wall-clock time to a UTC epoch before calling in, so the
   trigger interval is just `epoch - now` regardless of time zone). There's
@@ -72,9 +76,19 @@ implemented here too, sharing the same web-side code
   (`UNUserNotificationCenterDelegate.willPresent`) so an alarm that fires
   while the app is already open still shows instead of being silently
   dropped, and persists the pending-alarms list in `UserDefaults` purely so
-  `listAlarms()` can enumerate it (the notifications themselves are
+  `listAlarms()` can enumerate it — alarms are only added once iOS has
+  accepted the notification, and ones whose time has passed are dropped
+  whenever the list is read (the notifications themselves are
   scheduled and fired by the OS, so unlike Android there's no
   `BootReceiver`-equivalent needed for reboot survival).
+- **Limitation: iOS alarms aren't real alarms (yet).** Because they're
+  ordinary notifications, the ring/silent switch and Focus modes mute them,
+  and they play the short default notification sound once instead of
+  ringing until dismissed — unlike Android's, they won't reliably wake
+  anyone. iOS 26's **AlarmKit** is the proper API for this (system alarm
+  UI, rings through silent mode and Focus); adopting it is a planned
+  follow-up, which needs Xcode 26 (the CI runner is on Xcode 16) and
+  on-device testing.
 - **Keep-awake** uses `UIApplication.shared.isIdleTimerDisabled`, mirroring
   Android's `FLAG_KEEP_SCREEN_ON`.
 - **Status bar appearance** is set via `WebViewController.setStatusBarAppearance`,

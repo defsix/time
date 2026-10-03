@@ -22,7 +22,13 @@ React/Three.js code that runs on the live site.
   the deployed site.
 - Geolocation (used for the nearest-city default) is wired through
   `WebChromeClient.onGeolocationPermissionsShowPrompt`, backed by a runtime
-  `ACCESS_FINE_LOCATION` permission request.
+  request for `ACCESS_FINE_LOCATION` *and* `ACCESS_COARSE_LOCATION` (Android
+  12+ ignores a request for fine on its own; either grant is enough).
+- **The WebView only ever shows the bundled app.** The native bridges
+  (`window.AndroidAlarmBridge`, `window.AndroidDisplayBridge`) are visible to
+  whatever page is loaded, so `shouldOverrideUrlLoading` refuses every URL
+  outside `appassets.androidplatform.net` (a link the user taps opens in
+  their browser instead), and location is only ever granted to that origin.
 
 ## City alarms
 
@@ -61,12 +67,19 @@ of narrow screens.
     otherwise — per Android 14's guidance for apps that don't have that
     permission.
   - `AlarmStore.kt` persists the alarm list (AlarmManager can't be
-    enumerated), which `BootReceiver.kt` reads to reschedule everything
-    after a reboot (raw alarms don't survive one).
+    enumerated) in device-protected storage. `AlarmScheduler.rescheduleAll`
+    re-arms every future alarm from it: on boot (`BootReceiver.kt`, which is
+    direct-boot aware, so alarms ring even before the first unlock after an
+    overnight reboot), when exact-alarm access is granted, and on every app
+    launch — a force-stop or revoked "Alarms & reminders" access silently
+    cancels all of an app's alarms.
   - `AlarmReceiver.kt` posts a full-screen-intent notification when the
     alarm fires; `AlarmRingActivity.kt` is the actual ringing screen
     (shows over the lock screen, loops the default alarm sound, vibrates,
-    Snooze/Dismiss).
+    Snooze/Dismiss — Back is ignored, as in the built-in Clock app). An
+    alarm that fires while another is ringing joins the same screen;
+    unanswered alarms silence after 10 minutes and leave a "Missed alarm"
+    notification.
   - Requires runtime `POST_NOTIFICATIONS` (Android 13+) and the
     `SCHEDULE_EXACT_ALARM` special access (Settings > Apps > Special app
     access > Alarms & reminders) for precise timing; the UI prompts for
@@ -133,24 +146,51 @@ Signing is optional and never committed:
   copy [`keystore.properties.example`](keystore.properties.example) to
   `keystore.properties` (gitignored) and fill in the real paths/passwords,
   then `./gradlew assembleRelease` produces a signed `.apk`.
-- **In CI:** [`android-build.yml`](../.github/workflows/android-build.yml) also
-  builds `assembleRelease` on every push/PR. Set these repo secrets once a
-  real release keystore exists — `ANDROID_KEYSTORE_BASE64` (`base64 -w0 release.jks`),
-  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` —
-  and the workflow decodes and signs with it automatically.
-- **Without either:** the release build type falls back to debug signing, so
-  `assembleRelease` still succeeds on ordinary branch/PR builds (useful for
-  smoke-testing the minified build shape) — **except** on a tagged release
-  push (`v*`), where a missing keystore secret fails the build instead of
-  silently publishing a debug-signed APK as "the" signed release.
+- **In CI:** [`android-build.yml`](../.github/workflows/android-build.yml)
+  builds `assembleRelease -PunsignedRelease` on every push/PR, which emits an
+  *unsigned* APK (smoke-testing the minified build shape). On a `v*` tag, a
+  separate `sign-release` job signs that APK with the Android SDK's
+  `apksigner` — the build job, which runs all the npm/Gradle dependency code,
+  never sees the key, and the signing job runs no repository or dependency
+  code at all. Set these secrets once a real release keystore exists —
+  `ANDROID_KEYSTORE_BASE64` (`base64 -w0 release.jks`),
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+  They work as repo secrets, but are better kept as secrets of the
+  `android-release` environment (Settings → Environments), restricted to
+  `v*` tags and ideally with a required reviewer, so nothing else in the repo
+  can read them.
+- **Without either:** a local `assembleRelease` falls back to debug signing,
+  so it still succeeds (useful for smoke-testing). A tagged release push
+  (`v*`) with no keystore secret fails instead of publishing an unsigned or
+  debug-signed APK as "the" signed release.
 
 **Cutting a release:** bump `versionCode`/`versionName` in
 `app/build.gradle.kts` (must increase, or Android refuses to update over an
 existing install), commit, then `git tag v1.0 && git push --tags`. CI builds
 the signed APK and publishes it — plus a `.sha256` checksum — to a GitHub
-Release matching the tag. This coexists with the rolling
-`android-debug-latest` prerelease (unsigned debug build from every push to
-`main`); the tagged release is the one that shows up as "Latest".
+Release matching the tag, together with a GitHub build-provenance
+attestation. Anyone can check a downloaded APK really came from this
+repository's CI with `gh attestation verify world-time-v1.4.apk -R defsix/time`
+(the `.sha256` only catches a corrupted download: it sits next to the APK,
+so it can't catch tampering). This coexists with the rolling
+`android-debug-latest` prerelease (debug build from every push to `main`);
+the tagged release is the one that shows up as "Latest".
+
+**Stable debug signing (optional).** Without it, every CI run signs the
+rolling debug build with a freshly generated debug key, so a new debug build
+won't install over the previous one (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`;
+uninstalling first loses alarms and pins). To fix that, create a debug-only
+keystore once — Android's standard debug credentials, it's the file itself
+that's secret — and add it as the `ANDROID_DEBUG_KEYSTORE_BASE64` secret:
+
+```bash
+keytool -genkeypair -keystore world-time-debug.jks -storepass android -keypass android \
+  -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=World Time Debug"
+base64 -w0 world-time-debug.jks   # paste the output into the secret
+```
+
+The `sign-debug` job then re-signs each rolling debug build with it (the
+first build signed this way still needs one uninstall).
 
 A [privacy policy](../public/privacy.html) is also published at
 `https://defsix.github.io/time/privacy.html`.

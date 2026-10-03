@@ -3,6 +3,9 @@
     <string name="alarm_channel_name">City alarms</string>
     <string name="alarm_channel_description">Alarms set for a specific city\'s local time</string>
     <string name="alarm_ringing">Alarm</string>
+    <string name="alarm_ringing_for">Alarm: %1$s</string>
+    <string name="alarm_missed_title">Missed alarm: %1$s</string>
+    <string name="alarm_missed_text">Silenced after ringing for 10 minutes</string>
     <string name="alarm_snooze">Snooze 10 min</string>
     <string name="alarm_dismiss">Dismiss</string>
 </resources>

@@ -27,6 +27,12 @@ fun releaseSigningValue(propertyKey: String, envVar: String): String? =
 val releaseStoreFile = releaseSigningValue("storeFile", "ANDROID_KEYSTORE_PATH")
 val hasReleaseSigning = releaseStoreFile != null
 
+// CI builds with -PunsignedRelease: the job that builds the app (and so runs
+// npm/Gradle dependency code) must never hold the signing key, so it emits an
+// unsigned APK that a separate secrets-only job signs with apksigner (see
+// .github/workflows/android-build.yml).
+val unsignedRelease = providers.gradleProperty("unsignedRelease").isPresent
+
 // The Android app has no UI of its own for the globe/clock/etc: it ships the
 // existing React/Three.js web app (../.. from here) as its assets and shows it
 // in a WebView. These tasks build that web app and copy the output in before
@@ -36,7 +42,9 @@ val webAssetsOutput = layout.projectDirectory.dir("src/main/assets/www")
 
 val npmInstall by tasks.registering(Exec::class) {
     workingDir = webAppDir
-    commandLine("npm", "ci")
+    // --ignore-scripts: no dependency install scripts run during the build —
+    // the usual entry point for npm supply-chain attacks. Nothing here needs them.
+    commandLine("npm", "ci", "--ignore-scripts")
     inputs.file(webAppDir.resolve("package-lock.json"))
     outputs.dir(webAppDir.resolve("node_modules"))
 }
@@ -69,8 +77,8 @@ android {
         applicationId = "io.defsix.time"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
     }
 
     signingConfigs {
@@ -88,7 +96,11 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            signingConfig = when {
+                unsignedRelease -> null
+                hasReleaseSigning -> signingConfigs.getByName("release")
+                else -> signingConfigs.getByName("debug")
+            }
         }
     }
 

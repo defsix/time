@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { nextOccurrenceEpoch } from '../lib/alarmTime'
+import { formatAlarmTime, nextOccurrenceEpoch } from '../lib/alarmTime'
 import { t } from '../lib/i18n'
 import {
   type CityAlarm,
@@ -22,14 +22,9 @@ interface CityAlarmsProps {
 const PANEL_WIDTH = 280
 const VIEWPORT_MARGIN = 8
 
-function formatAlarmTime(epochMillis: number, timeZone: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    timeZone,
-    weekday: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(epochMillis))
-}
+// What <input type="time"> yields for a complete time; the field can also be
+// cleared to "", which used to throw deep inside nextOccurrenceEpoch.
+const TIME_VALUE = /^([01]\d|2[0-3]):([0-5]\d)$/
 
 export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
   const [open, setOpen] = useState(false)
@@ -86,36 +81,45 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
   }, [open])
 
   async function handleSetAlarm() {
+    const match = TIME_VALUE.exec(time)
+    if (!match) return
     setStatus(null)
-    if (!(await hasNotificationPermission())) {
-      const granted = await requestNotificationPermission()
-      if (!granted) {
-        setStatus(t.cityAlarms.notifPermRequired)
-        refresh()
-        return
+    try {
+      if (!(await hasNotificationPermission())) {
+        const granted = await requestNotificationPermission()
+        if (!granted) {
+          setStatus(t.cityAlarms.notifPermRequired)
+          return
+        }
       }
-    }
 
-    const [hourStr, minuteStr] = time.split(':')
-    const hour = Number(hourStr)
-    const minute = Number(minuteStr)
-    const epoch = nextOccurrenceEpoch(targetTz, hour, minute)
-    const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const epoch = nextOccurrenceEpoch(targetTz, Number(match[1]), Number(match[2]))
+      const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
-    const result = await scheduleCityAlarm(id, targetLabel, epoch, targetLabel)
-    if (result === 'ok') {
-      setStatus(t.cityAlarms.alarmSetFor(formatAlarmTime(epoch, targetTz)))
-    } else if (result === 'ok_inexact') {
-      setStatus(t.cityAlarms.alarmSetInexact)
-    } else {
-      setStatus(t.cityAlarms.notifPermRequired)
+      const result = await scheduleCityAlarm(id, targetLabel, epoch, targetLabel, targetTz)
+      if (result === 'ok') {
+        setStatus(t.cityAlarms.alarmSetFor(formatAlarmTime(epoch, targetTz)))
+      } else if (result === 'ok_inexact') {
+        setStatus(t.cityAlarms.alarmSetInexact)
+      } else {
+        setStatus(t.cityAlarms.notifPermRequired)
+      }
+    } catch (err) {
+      // e.g. iOS refusing the notification request — say so rather than
+      // leaving the panel looking like nothing happened.
+      console.error('Setting the alarm failed', err)
+      setStatus(t.cityAlarms.scheduleFailed)
+    } finally {
+      refresh()
     }
-    refresh()
   }
 
   async function handleCancel(id: string) {
-    await cancelCityAlarm(id)
-    refresh()
+    try {
+      await cancelCityAlarm(id)
+    } finally {
+      refresh()
+    }
   }
 
   return (
@@ -137,7 +141,7 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
               onChange={(e) => setTime(e.target.value)}
               className="city-alarms-time-input"
             />
-            <button className="city-alarms-set-btn" onClick={handleSetAlarm}>
+            <button className="city-alarms-set-btn" onClick={handleSetAlarm} disabled={!TIME_VALUE.test(time)}>
               {t.cityAlarms.setAlarmFor(targetLabel)}
             </button>
           </div>
@@ -170,11 +174,7 @@ export default function CityAlarms({ targetTz, targetLabel }: CityAlarmsProps) {
                 .map((alarm) => (
                   <li key={alarm.id} className="city-alarms-list-item">
                     <span>
-                      {alarm.label} — {new Intl.DateTimeFormat(undefined, {
-                        weekday: 'short',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      }).format(new Date(alarm.epochMillis))}
+                      {alarm.label} — {formatAlarmTime(alarm.epochMillis, alarm.timeZone)}
                     </span>
                     <button className="city-alarms-cancel-btn" onClick={() => handleCancel(alarm.id)}>
                       ✕

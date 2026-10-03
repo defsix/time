@@ -14,6 +14,11 @@ export const es: Translations = {
     footer:
       'Creado con Three.js. La hora se verifica con TimeAPI.io, el endpoint de sincronización de reloj de Binance y un servicio HTTP compatible con WorldTimeAPI (time.now); consulta el panel de Fuentes de hora para ver los detalles técnicos en vivo de cada una. El amanecer, el atardecer y la fase lunar se calculan localmente con fórmulas solares/lunares estándar.',
   },
+  errorBoundary: {
+    title: 'Algo ha salido mal',
+    body: 'La página ha encontrado un error inesperado. Volver a empezar suele solucionarlo.',
+    startOver: 'Volver a empezar',
+  },
   globe: {
     sun: 'Sol',
     moon: 'Luna',
@@ -55,6 +60,7 @@ export const es: Translations = {
     enableNotifications: 'Activar notificaciones',
     exactAlarmNudge: 'No se ha concedido acceso a alarmas exactas; las alarmas pueden sonar hasta ~10 min tarde.',
     grantExactAlarms: 'Conceder alarmas exactas',
+    scheduleFailed: 'No se pudo poner la alarma. Inténtalo de nuevo.',
   },
   nightstand: {
     exitAria: 'Salir del modo mesita de noche',
