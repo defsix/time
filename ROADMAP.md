@@ -37,3 +37,17 @@ order of priority. Details of each completed step are in
 
 - [ ] iOS: adopt AlarmKit (iOS 26+) for real alarms, keeping notifications as the fallback — needs Xcode 26 (CI runner upgrade) and on-device testing
 - [ ] Android: replace `addJavascriptInterface` with `WebViewCompat.addWebMessageListener` (built-in origin allow-list) — makes bridge calls async, needs a `nativeBridge.ts` rework
+
+## Store release (Play Store + F-Droid) — when ready
+
+Decision (2026-10-03): **one app signing key for every channel**, staged —
+Play and GitHub first; F-Droid shares it only if builds prove reproducible,
+otherwise F-Droid signs with its own key.
+
+- [ ] Generate the new app signing key **offline on a trusted machine** (`keytool … -keyalg RSA -keysize 4096 -validity 10000 -storetype PKCS12`); record its SHA-256 fingerprint; two offline backups. Existing GitHub installs will need one reinstall.
+- [ ] Put it in the `android-release` environment secrets (restricted to `v*` tags, required reviewer)
+- [ ] Raise `targetSdk` to 36 (Play requirement for new apps since 31 Aug 2026) and test the Android 15/16 behaviour changes — likely the longest task
+- [ ] Build and sign an AAB for Play (the pipeline currently produces APKs only)
+- [ ] Play Console: at App Signing choose **"use my own key"** (one-way door — a Google-generated key can never match GitHub/F-Droid) and create a **separate upload key**; complete full-screen-intent / exact-alarm / location declarations and the Data safety form
+- [ ] F-Droid: check the release build is bit-for-bit reproducible (npm/Vite output, baseline profiles); if yes, F-Droid publishes our signed APK, if not, it uses its own key; expect a NonFreeNet anti-feature for the third-party time APIs
+- [ ] Publish the signing-cert fingerprint in the README
